@@ -1,13 +1,19 @@
-import { useEffect, useState, useCallback } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useEffect, useState, useCallback, FormEvent } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   getProject, getCalls, getMetricSummary, getManagerSummary, getTimeline,
+  updateProject, archiveProject, addMember, removeMember, getManagers,
+  getMetricGroups, createMetricGroup, updateMetricGroup, deleteMetricGroup,
+  createMetricItem, updateMetricItem, deleteMetricItem,
   Project, CallListItem, MetricSummary, ManagerSummary, TimelinePoint,
+  Manager, MetricGroup, MetricGroupType,
 } from '../api'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import Modal from '../components/Modal'
 import styles from './ProjectDetailPage.module.css'
+import formStyles from '../components/Form.module.css'
 
-type Tab = 'calls' | 'analytics'
+type Tab = 'calls' | 'analytics' | 'settings'
 
 const STATUS_LABELS: Record<string, string> = {
   uploaded: 'Загружен',
@@ -27,6 +33,12 @@ const STATUS_COLORS: Record<string, string> = {
   error: '#e74c3c',
 }
 
+const GROUP_TYPE_LABELS: Record<MetricGroupType, string> = {
+  required_keywords: 'Обязательные фразы',
+  forbidden_keywords: 'Запрещённые фразы',
+  script_stages: 'Этапы скрипта',
+}
+
 const PAGE_SIZE = 50
 
 function fmtDuration(sec: number | null): string {
@@ -39,6 +51,7 @@ function fmtDuration(sec: number | null): string {
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const projectId = Number(id)
+  const navigate = useNavigate()
 
   const [project, setProject] = useState<Project | null>(null)
   const [tab, setTab] = useState<Tab>('calls')
@@ -62,11 +75,13 @@ export default function ProjectDetailPage() {
     setOffset(off + data.length)
   }, [projectId])
 
+  const loadProject = useCallback(() => getProject(projectId).then(setProject), [projectId])
+
   useEffect(() => {
     setLoading(true)
     setError(null)
     Promise.all([
-      getProject(projectId).then(setProject),
+      loadProject(),
       loadCalls(0),
       getMetricSummary(projectId).then(setMetrics),
       getManagerSummary(projectId).then(setManagers),
@@ -74,7 +89,7 @@ export default function ProjectDetailPage() {
     ])
       .catch(() => setError('Не удалось загрузить данные проекта'))
       .finally(() => setLoading(false))
-  }, [projectId, loadCalls])
+  }, [projectId, loadCalls, loadProject])
 
   if (loading) return <div className={styles.state}>Загрузка...</div>
   if (error) return <div className={`${styles.state} ${styles.error}`}>{error}</div>
@@ -102,6 +117,12 @@ export default function ProjectDetailPage() {
           onClick={() => setTab('analytics')}
         >
           Аналитика
+        </button>
+        <button
+          className={tab === 'settings' ? styles.activeTab : styles.tab}
+          onClick={() => setTab('settings')}
+        >
+          Настройки
         </button>
       </div>
 
@@ -206,6 +227,378 @@ export default function ProjectDetailPage() {
           )}
         </div>
       )}
+
+      {tab === 'settings' && (
+        <SettingsTab
+          project={project}
+          onProjectChanged={loadProject}
+          onArchived={() => navigate('/projects')}
+        />
+      )}
     </div>
+  )
+}
+
+// ── Settings tab ────────────────────────────────────────────────────────────
+
+function SettingsTab({
+  project, onProjectChanged, onArchived,
+}: { project: Project; onProjectChanged: () => void; onArchived: () => void }) {
+  return (
+    <div className={styles.analytics}>
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>Проект</h2>
+        <ProjectInfoForm project={project} onSaved={onProjectChanged} onArchived={onArchived} />
+      </div>
+
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>Участники</h2>
+        <MembersEditor project={project} onChanged={onProjectChanged} />
+      </div>
+
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>Группы метрик</h2>
+        <MetricGroupsEditor projectId={project.id} />
+      </div>
+    </div>
+  )
+}
+
+function ProjectInfoForm({
+  project, onSaved, onArchived,
+}: { project: Project; onSaved: () => void; onArchived: () => void }) {
+  const [name, setName] = useState(project.name)
+  const [description, setDescription] = useState(project.description ?? '')
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setSaving(true)
+    try {
+      await updateProject(project.id, {
+        name,
+        clear_description: description.trim() === '',
+        description: description.trim() === '' ? undefined : description,
+      })
+      onSaved()
+    } catch {
+      setError('Не удалось сохранить изменения')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleArchive() {
+    if (!confirm(`Архивировать проект «${project.name}»? Это возможно только если у него нет активных звонков.`)) return
+    try {
+      await archiveProject(project.id)
+      onArchived()
+    } catch {
+      alert('Не удалось архивировать: в проекте есть звонки в незавершённом статусе.')
+    }
+  }
+
+  return (
+    <form className={formStyles.form} onSubmit={handleSubmit} style={{ maxWidth: 460 }}>
+      {error && <div className={formStyles.error}>{error}</div>}
+      <label className={formStyles.label}>
+        Название
+        <input className={formStyles.input} value={name} onChange={e => setName(e.target.value)} required />
+      </label>
+      <label className={formStyles.label}>
+        Описание
+        <textarea className={formStyles.textarea} value={description} onChange={e => setDescription(e.target.value)} />
+      </label>
+      <div className={formStyles.actions}>
+        <button className={formStyles.btnPrimary} type="submit" disabled={saving}>
+          {saving ? 'Сохранение...' : 'Сохранить'}
+        </button>
+        <button className={formStyles.btnDanger} type="button" onClick={handleArchive}>
+          Архивировать проект
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function MembersEditor({ project, onChanged }: { project: Project; onChanged: () => void }) {
+  const [allManagers, setAllManagers] = useState<Manager[]>([])
+  const [selected, setSelected] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => { getManagers().then(setAllManagers) }, [])
+
+  const available = allManagers.filter(m => !project.members.some(pm => pm.id === m.id))
+
+  async function handleAdd(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (!selected) return
+    try {
+      await addMember(project.id, Number(selected))
+      setSelected('')
+      onChanged()
+    } catch {
+      setError('Не удалось добавить менеджера')
+    }
+  }
+
+  async function handleRemove(userId: number) {
+    try {
+      await removeMember(project.id, userId)
+      onChanged()
+    } catch {
+      setError('Не удалось удалить менеджера из проекта')
+    }
+  }
+
+  return (
+    <div>
+      {error && <div className={formStyles.error} style={{ marginBottom: 10 }}>{error}</div>}
+      {project.members.length === 0 ? (
+        <div className={styles.empty}>В проекте пока нет менеджеров</div>
+      ) : (
+        <div className={styles.memberList}>
+          {project.members.map(m => (
+            <div key={m.id} className={styles.memberRow}>
+              <span>{m.name}</span>
+              <button className={formStyles.btnLink} onClick={() => handleRemove(m.id)}>Убрать</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {available.length > 0 && (
+        <form className={styles.inlineForm} onSubmit={handleAdd}>
+          <select className={formStyles.select} style={{ flex: 1 }} value={selected} onChange={e => setSelected(e.target.value)}>
+            <option value="">Выбрать менеджера…</option>
+            {available.map(m => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+          <button className={formStyles.btnPrimary} type="submit" disabled={!selected}>Добавить</button>
+        </form>
+      )}
+      {available.length === 0 && allManagers.length > 0 && (
+        <p className={styles.empty}>Все менеджеры уже добавлены в проект</p>
+      )}
+      {allManagers.length === 0 && (
+        <p className={styles.empty}>
+          Менеджеров ещё нет — создайте их на странице «Менеджеры»
+        </p>
+      )}
+    </div>
+  )
+}
+
+function MetricGroupsEditor({ projectId }: { projectId: number }) {
+  const [groups, setGroups] = useState<MetricGroup[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+
+  function reload() {
+    setLoading(true)
+    getMetricGroups(projectId).then(setGroups).finally(() => setLoading(false))
+  }
+
+  useEffect(reload, [projectId])
+
+  async function handleDeleteGroup(g: MetricGroup) {
+    if (!confirm(`Удалить группу «${g.name}»?`)) return
+    try {
+      await deleteMetricGroup(g.id)
+      reload()
+    } catch {
+      alert('Не удалось удалить: по этой группе уже есть результаты анализа звонков.')
+    }
+  }
+
+  if (loading) return <div className={styles.state}>Загрузка...</div>
+
+  return (
+    <div>
+      {groups.length === 0 ? (
+        <div className={styles.empty}>Групп метрик пока нет</div>
+      ) : (
+        groups.map(g => (
+          <MetricGroupCard key={g.id} group={g} onChanged={reload} onDelete={() => handleDeleteGroup(g)} />
+        ))
+      )}
+
+      <button className={formStyles.btnPrimary} style={{ marginTop: 12 }} onClick={() => setShowCreate(true)}>
+        + Добавить группу метрик
+      </button>
+
+      {showCreate && (
+        <CreateGroupModal
+          projectId={projectId}
+          onClose={() => setShowCreate(false)}
+          onCreated={() => { setShowCreate(false); reload() }}
+        />
+      )}
+    </div>
+  )
+}
+
+function MetricGroupCard({
+  group, onChanged, onDelete,
+}: { group: MetricGroup; onChanged: () => void; onDelete: () => void }) {
+  const [newItemName, setNewItemName] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleAddItem(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (!newItemName.trim()) return
+    try {
+      await createMetricItem(group.id, { name: newItemName.trim() })
+      setNewItemName('')
+      onChanged()
+    } catch {
+      setError('Не удалось добавить пункт')
+    }
+  }
+
+  async function handleDeleteItem(itemId: number) {
+    try {
+      await deleteMetricItem(itemId)
+      onChanged()
+    } catch {
+      setError('Не удалось удалить пункт')
+    }
+  }
+
+  async function handleRenameItem(itemId: number, currentName: string) {
+    const name = prompt('Новое название пункта:', currentName)
+    if (!name || name === currentName) return
+    try {
+      await updateMetricItem(itemId, { name })
+      onChanged()
+    } catch {
+      setError('Не удалось переименовать пункт')
+    }
+  }
+
+  async function handleRenameGroup(groupId: number, currentName: string) {
+    const name = prompt('Новое название группы:', currentName)
+    if (!name || name === currentName) return
+    try {
+      await updateMetricGroup(groupId, { name })
+      onChanged()
+    } catch {
+      setError('Не удалось переименовать группу')
+    }
+  }
+
+  return (
+    <div className={styles.groupCard}>
+      <div className={styles.groupHeader}>
+        <div>
+          <div className={styles.groupName}>{group.name}</div>
+          <div className={styles.groupType}>{GROUP_TYPE_LABELS[group.group_type]}</div>
+        </div>
+        <span className={styles.itemActions}>
+          <button className={formStyles.btnLink} onClick={() => handleRenameGroup(group.id, group.name)}>Переименовать</button>
+          <button className={formStyles.btnLink} onClick={onDelete}>Удалить группу</button>
+        </span>
+      </div>
+
+      {error && <div className={formStyles.error} style={{ marginBottom: 8 }}>{error}</div>}
+
+      {group.items.length === 0 ? (
+        <p className={styles.empty}>Пунктов пока нет</p>
+      ) : (
+        <ul className={styles.itemList}>
+          {group.items.filter(i => i.is_active).map(item => (
+            <li key={item.id} className={styles.itemRow}>
+              <span>{item.position}. {item.name}</span>
+              <span className={styles.itemActions}>
+                <button className={formStyles.btnLink} onClick={() => handleRenameItem(item.id, item.name)}>✎</button>
+                <button className={formStyles.btnLink} onClick={() => handleDeleteItem(item.id)}>×</button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form className={styles.inlineForm} onSubmit={handleAddItem}>
+        <input
+          className={formStyles.input}
+          style={{ flex: 1 }}
+          placeholder="Название нового пункта"
+          value={newItemName}
+          onChange={e => setNewItemName(e.target.value)}
+        />
+        <button className={formStyles.btnSecondary} type="submit" disabled={!newItemName.trim()}>
+          Добавить пункт
+        </button>
+      </form>
+    </div>
+  )
+}
+
+function CreateGroupModal({
+  projectId, onClose, onCreated,
+}: { projectId: number; onClose: () => void; onCreated: () => void }) {
+  const [name, setName] = useState('')
+  const [groupType, setGroupType] = useState<MetricGroupType>('script_stages')
+  const [promptTemplate, setPromptTemplate] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setSaving(true)
+    try {
+      await createMetricGroup(projectId, { name, group_type: groupType, prompt_template: promptTemplate })
+      onCreated()
+    } catch {
+      setError('Не удалось создать группу')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal title="Новая группа метрик" onClose={onClose}>
+      <form className={formStyles.form} onSubmit={handleSubmit}>
+        {error && <div className={formStyles.error}>{error}</div>}
+        <label className={formStyles.label}>
+          Название
+          <input className={formStyles.input} value={name} onChange={e => setName(e.target.value)} required autoFocus />
+        </label>
+        <label className={formStyles.label}>
+          Тип
+          <select
+            className={formStyles.select}
+            value={groupType}
+            onChange={e => setGroupType(e.target.value as MetricGroupType)}
+          >
+            {Object.entries(GROUP_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </label>
+        <label className={formStyles.label}>
+          Промпт для LLM
+          <textarea
+            className={formStyles.textarea}
+            value={promptTemplate}
+            onChange={e => setPromptTemplate(e.target.value)}
+            placeholder="Опиши, что именно должна оценить модель по этой группе"
+            required
+          />
+        </label>
+        <div className={formStyles.actions}>
+          <button className={formStyles.btnPrimary} type="submit" disabled={saving}>
+            {saving ? 'Создание...' : 'Создать'}
+          </button>
+          <button className={formStyles.btnSecondary} type="button" onClick={onClose}>Отмена</button>
+        </div>
+      </form>
+    </Modal>
   )
 }

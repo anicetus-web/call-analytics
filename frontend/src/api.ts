@@ -107,8 +107,59 @@ export const getManagers = () =>
 export const createManager = (data: { name: string; telegram_id: number; login?: string }) =>
   api.post<Manager>('/users', data).then(r => r.data)
 
+export const updateManager = (id: number, data: { name?: string; telegram_id?: number }) =>
+  api.patch<Manager>(`/users/${id}`, data).then(r => r.data)
+
 export const deleteManager = (id: number) =>
   api.delete(`/users/${id}`)
+
+// ── Metric groups & items ────────────────────────────────────────────────────
+
+export type MetricGroupType = 'required_keywords' | 'forbidden_keywords' | 'script_stages'
+
+export interface MetricItem {
+  id: number
+  position: number
+  name: string
+  description: string | null
+  is_active: boolean
+}
+
+export interface MetricGroup {
+  id: number
+  project_id: number
+  name: string
+  group_type: MetricGroupType
+  prompt_template: string
+  items: MetricItem[]
+}
+
+export const getMetricGroups = (projectId: number) =>
+  api.get<MetricGroup[]>(`/projects/${projectId}/metric-groups`).then(r => r.data)
+
+export const createMetricGroup = (projectId: number, data: {
+  name: string
+  group_type: MetricGroupType
+  prompt_template: string
+}) => api.post<MetricGroup>(`/projects/${projectId}/metric-groups`, data).then(r => r.data)
+
+export const updateMetricGroup = (id: number, data: { name?: string; prompt_template?: string }) =>
+  api.patch<MetricGroup>(`/metric-groups/${id}`, data).then(r => r.data)
+
+export const deleteMetricGroup = (id: number) =>
+  api.delete(`/metric-groups/${id}`)
+
+export const createMetricItem = (groupId: number, data: { name: string; description?: string }) =>
+  api.post<MetricItem>(`/metric-groups/${groupId}/items`, data).then(r => r.data)
+
+export const updateMetricItem = (id: number, data: {
+  name?: string
+  description?: string
+  clear_description?: boolean
+}) => api.patch<MetricItem>(`/metric-items/${id}`, data).then(r => r.data)
+
+export const deleteMetricItem = (id: number) =>
+  api.delete(`/metric-items/${id}`)
 
 // ── Calls ─────────────────────────────────────────────────────────────────────
 

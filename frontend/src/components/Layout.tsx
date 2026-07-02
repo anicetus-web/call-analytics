@@ -11,6 +11,9 @@ export default function Layout() {
           <NavLink to="/projects" className={({ isActive }) => isActive ? styles.active : ''}>
             Проекты
           </NavLink>
+          <NavLink to="/managers" className={({ isActive }) => isActive ? styles.active : ''}>
+            Менеджеры
+          </NavLink>
         </nav>
         <button className={styles.logoutBtn} onClick={logout}>Выйти</button>
       </aside>

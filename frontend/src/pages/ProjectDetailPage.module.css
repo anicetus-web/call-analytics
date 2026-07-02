@@ -189,3 +189,74 @@
   align-self: center;
 }
 .loadMore:hover { border-color: #3498db; color: #3498db; }
+
+.memberList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.memberRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+}
+.memberRow:last-child { border-bottom: none; }
+
+.inlineForm {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.groupCard {
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.groupName {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.groupType {
+  font-size: 12px;
+  color: #aaa;
+  margin-top: 2px;
+}
+
+.itemList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.itemRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+  border-bottom: 1px solid #f7f7f7;
+}
+.itemRow:last-child { border-bottom: none; }
+
+.itemActions {
+  display: flex;
+  gap: 10px;
+}

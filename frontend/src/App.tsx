@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage'
 import ProjectsPage from './pages/ProjectsPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
 import CallDetailPage from './pages/CallDetailPage'
+import ManagersPage from './pages/ManagersPage'
 import Layout from './components/Layout'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
           <Route path="calls/:id" element={<CallDetailPage />} />
+          <Route path="managers" element={<ManagersPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

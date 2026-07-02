@@ -1,7 +1,13 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
 .title {
   font-size: 26px;
   font-weight: 700;
-  margin-bottom: 24px;
 }
 
 .state {
