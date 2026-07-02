@@ -1,0 +1,115 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: call_analytics
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    # Port intentionally NOT published to the host — the DB is reachable only
+    # inside the compose network as "db:5432". Expose it explicitly during local
+    # debugging if you really need to, but never on a public VPS.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d call_analytics"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot migration runner. Runs `alembic upgrade head` and exits.
+  # api and worker depend on it via `service_completed_successfully`, which
+  # serializes migrations even when the api service is scaled to multiple
+  # replicas (the migrate container runs exactly once per `docker compose up`).
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/call_analytics
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # API process(es): serve HTTP only. Stateless — can be scaled horizontally.
+  # Does NOT run the bot or the worker (those are separate single-instance services).
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/call_analytics
+      RUN_API: "true"
+      RUN_BOT: "false"
+      RUN_WORKER: "false"
+      # API signals the worker to enqueue new calls via this URL
+      WORKER_URL: "http://worker:8000"
+    # Override the image entrypoint: API no longer runs migrations itself; the
+    # dedicated `migrate` service does that exactly once.
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Single combined bot + worker process. The worker drains the in-memory queue
+  # and the bot delivers Telegram notifications; keeping them in ONE process means
+  # notify_fn can reach the running bot. MUST remain a single replica.
+  # Runs a dedicated entrypoint (no uvicorn / no API routes), with a tiny /health
+  # endpoint just for the healthcheck.
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/call_analytics
+      RUN_API: "false"
+      RUN_BOT: "true"
+      RUN_WORKER: "true"
+      INTERNAL_API_URL: "http://api:8000"
+    command: ["python", "-m", "bot.worker_main"]
+    volumes:
+      - tmp_data:/tmp/call-analytics
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      api:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  pg_data:
+  tmp_data:

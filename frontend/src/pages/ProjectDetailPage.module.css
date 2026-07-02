@@ -1,0 +1,191 @@
+.state { color: #888; }
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.breadcrumb {
+  font-size: 13px;
+  color: #3498db;
+  display: block;
+  margin-bottom: 8px;
+}
+.breadcrumb:hover { text-decoration: underline; }
+
+.title {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.desc {
+  color: #888;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid #e8e8e8;
+}
+
+.tab, .activeTab {
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: #888;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.activeTab {
+  color: #1a1a2e;
+  border-bottom-color: #1a1a2e;
+}
+
+.tab:hover { color: #1a1a2e; }
+
+.callsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.callRow {
+  background: #fff;
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  transition: box-shadow 0.15s;
+}
+.callRow:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+
+.callName {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 400px;
+}
+
+.callMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.duration {
+  font-size: 13px;
+  color: #888;
+  font-variant-numeric: tabular-nums;
+}
+
+.badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.date {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.empty {
+  color: #aaa;
+  padding: 40px 0;
+  font-size: 14px;
+}
+
+.analytics {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.metricTable {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.metricRow {
+  display: grid;
+  grid-template-columns: 1fr 200px 40px 50px;
+  align-items: center;
+  gap: 12px;
+}
+
+.metricName {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scoreBar {
+  height: 8px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.scoreBarFill {
+  height: 100%;
+  background: #3498db;
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+
+.scoreVal {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  color: #1a1a2e;
+}
+
+.callCnt {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.error { color: #c0392b; }
+
+.loadMore {
+  margin-top: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #555;
+  transition: border-color 0.15s, color 0.15s;
+  align-self: center;
+}
+.loadMore:hover { border-color: #3498db; color: #3498db; }

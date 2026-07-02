@@ -1,0 +1,161 @@
+.state { color: #888; }
+
+.back {
+  font-size: 13px;
+  color: #3498db;
+  display: inline-block;
+  margin-bottom: 16px;
+}
+.back:hover { text-decoration: underline; }
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.meta {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: #888;
+}
+
+.comment {
+  font-size: 14px;
+  color: #555;
+  margin-top: 8px;
+  padding: 10px 14px;
+  background: #fafafa;
+  border-radius: 8px;
+  border-left: 3px solid #ddd;
+}
+
+.scoreCircle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 90px;
+  min-height: 90px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.scoreNum {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.scoreLabel {
+  font-size: 11px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.errorBox {
+  background: #ffeaea;
+  color: #c0392b;
+  border-radius: 10px;
+  padding: 16px 20px;
+  font-size: 14px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.reprocessBtn {
+  margin-left: auto;
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.reprocessBtn:hover:not(:disabled) { opacity: 0.85; }
+.reprocessBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  margin-bottom: 20px;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.audio {
+  width: 100%;
+}
+
+.resultsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.resultRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scoreIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.itemName {
+  font-size: 14px;
+  flex: 1;
+}
+
+.timecode {
+  font-size: 12px;
+  color: #3498db;
+  font-variant-numeric: tabular-nums;
+}
+
+.transcript {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  color: #444;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.processing {
+  background: #fffbe6;
+  color: #d68910;
+  border-radius: 10px;
+  padding: 16px 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
