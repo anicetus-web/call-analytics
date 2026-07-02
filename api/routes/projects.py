@@ -140,7 +140,14 @@ async def create_project(
     db.add(project)
     await db.flush()
     await db.refresh(project)
-    return _project_to_out(project)
+    return ProjectOut(
+        id=project.id,
+        name=project.name,
+        description=project.description,
+        is_active=project.is_active,
+        created_by=project.created_by,
+        members=[],
+    )
 
 
 @router.get("/{project_id}", response_model=ProjectOut)
