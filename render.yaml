@@ -1,0 +1,67 @@
+databases:
+  - name: call-analytics-db
+    plan: free
+    databaseName: call_analytics
+    user: call_analytics
+
+services:
+  - type: web
+    name: call-analytics-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    dockerCommand: >-
+      sh -c "alembic upgrade head && uvicorn api.main:app --host 0.0.0.0 --port 8000"
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: call-analytics-db
+          property: connectionString
+      - key: RUN_API
+        value: "true"
+      - key: RUN_BOT
+        value: "false"
+      - key: RUN_WORKER
+        value: "false"
+      - key: DEBUG
+        value: "true"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: BOT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRE_MINUTES
+        value: "1440"
+      - key: CORS_ORIGINS
+        value: '["https://call-analytics-frontend.onrender.com"]'
+      - key: ADMIN_TELEGRAM_IDS
+        value: "[]"
+      - key: OPENAI_API_KEY
+        value: "sk-STUB-REPLACE-WITH-REAL-OPENAI-KEY"
+      - key: WHISPER_MODEL
+        value: "whisper-1"
+      - key: LLM_MODEL
+        value: "gpt-4o-mini"
+      - key: TELEGRAM_BOT_TOKEN
+        value: "000000000:STUB-REPLACE-WITH-REAL-BOTFATHER-TOKEN"
+      - key: S3_ENDPOINT
+        value: "https://storage.yandexcloud.net"
+      - key: S3_BUCKET
+        value: "call-analytics-files-stub"
+      - key: S3_ACCESS_KEY
+        value: "STUB-REPLACE-WITH-REAL-ACCESS-KEY"
+      - key: S3_SECRET_KEY
+        value: "STUB-REPLACE-WITH-REAL-SECRET-KEY"
+      - key: TEMP_DIR
+        value: "/tmp/call-analytics"
+
+  - type: web
+    name: call-analytics-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    plan: free
+    envVars:
+      - key: API_UPSTREAM
+        value: "https://call-analytics-api.onrender.com"

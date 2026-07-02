@@ -88,6 +88,13 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL")
     @classmethod
     def validate_database_url(cls, v: str) -> str:
+        # Managed Postgres providers (e.g. Render) hand out postgres:// / postgresql://
+        # URLs; normalize to the asyncpg driver scheme instead of requiring users to
+        # hand-edit the connection string after every provisioning.
+        if v.startswith("postgres://"):
+            v = "postgresql+asyncpg://" + v[len("postgres://"):]
+        elif v.startswith("postgresql://"):
+            v = "postgresql+asyncpg://" + v[len("postgresql://"):]
         if not v.startswith("postgresql+asyncpg://"):
             raise ValueError(
                 "DATABASE_URL must use postgresql+asyncpg:// scheme for async support"
