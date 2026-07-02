@@ -11,8 +11,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     plan: free
-    dockerCommand: >-
-      sh -c "alembic upgrade head && uvicorn api.main:app --host 0.0.0.0 --port 8000"
+    dockerCommand: sh scripts/start_api.sh
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
