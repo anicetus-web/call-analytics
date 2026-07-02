@@ -29,7 +29,11 @@ server {
     # ── API proxy ─────────────────────────────────────────────────────────
     location /api/ {
         proxy_pass ${API_UPSTREAM};
-        proxy_set_header Host $host;
+        # Host must match the upstream (not the original request host) — required both
+        # for TLS SNI when API_UPSTREAM is https://, and so Render's edge router can
+        # find the api service when frontend and api are separate hosted services.
+        proxy_set_header Host $proxy_host;
+        proxy_ssl_server_name on;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;

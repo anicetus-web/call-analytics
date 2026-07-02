@@ -33,7 +33,7 @@ services:
       - key: JWT_EXPIRE_MINUTES
         value: "1440"
       - key: CORS_ORIGINS
-        value: '["https://call-analytics-frontend.onrender.com"]'
+        value: '["https://call-analytics-frontend.onrender.com","http://localhost:5173"]'
       - key: ADMIN_TELEGRAM_IDS
         value: "[]"
       - key: OPENAI_API_KEY
@@ -63,4 +63,4 @@ services:
     plan: free
     envVars:
       - key: API_UPSTREAM
-        value: "https://call-analytics-api.onrender.com"
+        value: "https://call-analytics-api-eos5.onrender.com"
