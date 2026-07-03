@@ -8,6 +8,7 @@ import CallsPage from './pages/CallsPage'
 import ManagersPage from './pages/ManagersPage'
 import ManagerDetailPage from './pages/ManagerDetailPage'
 import AnalyticsPage from './pages/AnalyticsPage'
+import ManagerRankingPage from './pages/ManagerRankingPage'
 import Layout from './components/Layout'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="managers" element={<ManagersPage />} />
           <Route path="managers/:id" element={<ManagerDetailPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="analytics/ranking" element={<ManagerRankingPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

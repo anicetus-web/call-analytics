@@ -126,26 +126,35 @@
 
 .grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
+  align-items: start;
 }
 
 .section {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px 20px;
+  padding: 16px 18px;
   transition: border-color 0.15s;
+  min-width: 0;
 }
 .section:hover {
   border-color: rgba(236,72,153,0.4);
 }
 
 .sectionTitle {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text);
-  margin-bottom: 14px;
+  margin-bottom: 10px;
+}
+
+.sectionDesc {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: -6px;
+  margin-bottom: 12px;
 }
 
 .metricTable {
@@ -212,6 +221,13 @@
   gap: 20px;
   flex-wrap: wrap;
 }
+/* Recharts gives each Pie sector tabIndex=0 for accessibility; clicking one
+   triggers the browser's default focus ring, which renders as a stray
+   rectangle around the sector's bounding box. Suppress it — we already show
+   values via the tooltip and legend, focus outline adds nothing here. */
+.donutRow :global(.recharts-wrapper) *:focus {
+  outline: none !important;
+}
 
 .donutLegend {
   display: flex;
@@ -257,10 +273,6 @@
 }
 
 .errorRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
   padding: 8px 10px;
   background: var(--bg-hover);
   border-radius: var(--radius-sm);
@@ -269,6 +281,14 @@
 .errorRow:hover {
   background: var(--bg-elevated);
   transform: translateX(2px);
+}
+
+.errorTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
 }
 
 .errorName {
@@ -285,8 +305,22 @@
 .errorCount {
   font-size: 12px;
   font-weight: 600;
-  color: #f87171;
+  color: #fb7185;
   white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.errorBarTrack {
+  height: 5px;
+  background: var(--bg-elevated);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.errorBarFill {
+  height: 100%;
+  background: linear-gradient(90deg, #eab308, #fb7185);
+  border-radius: 3px;
 }
 
 .rankList {
@@ -310,11 +344,17 @@
   transform: translateX(2px);
 }
 
-.rankMedal {
-  font-size: 16px;
-  width: 22px;
-  text-align: center;
-  color: #f87171;
+.rankNum {
+  font-size: 12px;
+  font-weight: 700;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
@@ -322,6 +362,9 @@
   font-size: 13px;
   color: var(--text);
   flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rankScore {
@@ -330,6 +373,18 @@
   color: var(--text);
 }
 
+.showAllLink {
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  color: var(--accent-pink);
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  transition: opacity 0.15s;
+}
+.showAllLink:hover { opacity: 0.75; }
+
 .skillsRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -337,29 +392,48 @@
   align-items: center;
 }
 
-.keywordCloud {
+.keywordList {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
-  align-items: center;
 }
 
-.keywordChip {
-  background: var(--bg-hover);
-  color: var(--text);
-  padding: 5px 10px;
-  border-radius: 999px;
-  white-space: nowrap;
-  transition: background 0.15s, transform 0.15s;
+.keywordRow {
+  display: grid;
+  grid-template-columns: 84px 1fr 24px;
+  align-items: center;
+  gap: 8px;
 }
-.keywordChip:hover {
-  background: linear-gradient(135deg, rgba(236,72,153,0.3), rgba(99,102,241,0.3));
-  transform: translateY(-1px);
+
+.keywordWord {
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.keywordBarTrack {
+  height: 6px;
+  background: var(--bg-hover);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.keywordBarFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-pink));
+  border-radius: 3px;
 }
 
 .keywordCount {
   color: var(--text-faint);
-  font-size: 10px;
+  font-size: 11px;
+  text-align: right;
+}
+
+@media (max-width: 1300px) {
+  .grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 1100px) {

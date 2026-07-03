@@ -10,7 +10,7 @@ import { IconTarget, IconTrend, IconAlert, IconPhoneWave } from '../components/i
 import Avatar from '../components/Avatar'
 import styles from './AnalyticsPage.module.css'
 
-const QUALITY_COLORS = { high: '#10b981', medium: '#f59e0b', low: '#ef4444' }
+const QUALITY_COLORS = { high: '#34d399', medium: '#eab308', low: '#fb7185' }
 
 const chartTooltipStyle = {
   contentStyle: {
@@ -269,15 +269,20 @@ export default function AnalyticsPage() {
                 <div className={styles.errorList}>
                   {topErrors.map(e => (
                     <div key={e.metric_item_id} className={styles.errorRow}>
-                      <span className={styles.errorName}>
-                        {e.metric_name}
-                        {!projectId && (
-                          <Link to={`/projects/${e.project_id}`} className={styles.errorProject} onClick={ev => ev.stopPropagation()}>
-                            {' '}· {e.project_name}
-                          </Link>
-                        )}
-                      </span>
-                      <span className={styles.errorCount}>{e.fail_count} случаев · {fmtPct(e.fail_rate)}</span>
+                      <div className={styles.errorTop}>
+                        <span className={styles.errorName}>
+                          {e.metric_name}
+                          {!projectId && (
+                            <Link to={`/projects/${e.project_id}`} className={styles.errorProject} onClick={ev => ev.stopPropagation()}>
+                              {' '}· {e.project_name}
+                            </Link>
+                          )}
+                        </span>
+                        <span className={styles.errorCount}>{e.fail_count} случаев</span>
+                      </div>
+                      <div className={styles.errorBarTrack}>
+                        <div className={styles.errorBarFill} style={{ width: `${e.fail_rate * 100}%` }} />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -292,19 +297,22 @@ export default function AnalyticsPage() {
                 {topManagers.length === 0 ? (
                   <div className={styles.empty}>Нет оценённых звонков за неделю</div>
                 ) : (
-                  <div className={styles.rankList}>
-                    {topManagers.map((m, i) => {
-                      const delta = fmtDelta(m.delta)
-                      return (
-                        <Link to={`/managers/${m.user_id}`} key={m.user_id} className={styles.rankRow}>
-                          <span className={styles.rankMedal}>{['🥇', '🥈', '🥉'][i]}</span>
-                          <span className={styles.rankName}>{m.name}</span>
-                          <span className={styles.rankScore}>{fmtPct(m.avg_score)}</span>
-                          {delta && <span className={delta.className}>{delta.text}</span>}
-                        </Link>
-                      )
-                    })}
-                  </div>
+                  <>
+                    <div className={styles.rankList}>
+                      {topManagers.map((m, i) => {
+                        const delta = fmtDelta(m.delta)
+                        return (
+                          <Link to={`/managers/${m.user_id}`} key={m.user_id} className={styles.rankRow}>
+                            <span className={styles.rankNum}>{i + 1}</span>
+                            <span className={styles.rankName}>{m.name}</span>
+                            <span className={styles.rankScore}>{fmtPct(m.avg_score)}</span>
+                            {delta && <span className={delta.className}>{delta.text}</span>}
+                          </Link>
+                        )
+                      })}
+                    </div>
+                    <Link to="/analytics/ranking" className={styles.showAllLink}>Показать всех менеджеров →</Link>
+                  </>
                 )}
               </div>
             )}
@@ -319,7 +327,7 @@ export default function AnalyticsPage() {
                     const delta = fmtDelta(m.delta)
                     return (
                       <Link to={`/managers/${m.user_id}`} key={m.user_id} className={styles.rankRow}>
-                        <span className={styles.rankMedal}><IconAlert size={16} /></span>
+                        <span className={styles.rankNum}><IconAlert size={14} /></span>
                         <span className={styles.rankName}>{m.name}</span>
                         <span className={styles.rankScore}>{fmtPct(m.avg_score)}</span>
                         {delta && <span className={delta.className}>{delta.text}</span>}
@@ -332,6 +340,9 @@ export default function AnalyticsPage() {
 
             <div className={styles.section} style={{ gridColumn: '1 / -1' }}>
               <h2 className={styles.sectionTitle}>Навыки и соблюдение скрипта</h2>
+              <p className={styles.sectionDesc}>
+                Средний балл AI по каждому этапу разговора — где менеджеры стабильно теряют баллы, а где справляются хорошо.
+              </p>
               {!projectId ? (
                 <div className={styles.empty}>Выберите проект в фильтре выше, чтобы увидеть разбивку по критериям — у разных проектов свои критерии оценки</div>
               ) : skills.length === 0 ? (
@@ -365,18 +376,22 @@ export default function AnalyticsPage() {
 
             <div className={styles.section}>
               <h2 className={styles.sectionTitle}>Часто встречающиеся слова</h2>
+              <p className={styles.sectionDesc}>Что чаще всего звучит в разговорах с клиентами, по транскрибации</p>
               {keywords.length === 0 ? (
                 <div className={styles.empty}>Нет транскрибаций за выбранный период</div>
               ) : (
-                <div className={styles.keywordCloud}>
-                  {keywords.map(k => (
-                    <span
-                      key={k.word}
-                      className={styles.keywordChip}
-                      style={{ fontSize: 11 + Math.min(k.count, 10) }}
-                    >
-                      {k.word} <span className={styles.keywordCount}>{k.count}</span>
-                    </span>
+                <div className={styles.keywordList}>
+                  {keywords.slice(0, 8).map(k => (
+                    <div key={k.word} className={styles.keywordRow}>
+                      <span className={styles.keywordWord}>{k.word}</span>
+                      <div className={styles.keywordBarTrack}>
+                        <div
+                          className={styles.keywordBarFill}
+                          style={{ width: `${(k.count / keywords[0].count) * 100}%` }}
+                        />
+                      </div>
+                      <span className={styles.keywordCount}>{k.count}</span>
+                    </div>
                   ))}
                 </div>
               )}
@@ -388,12 +403,12 @@ export default function AnalyticsPage() {
                 <div className={styles.empty}>Нет данных за выбранный период</div>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={buckets}>
+                  <BarChart data={buckets} barCategoryGap="45%">
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} stroke="var(--border)" />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} stroke="var(--border)" />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} stroke="var(--border)" />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} stroke="var(--border)" width={28} />
                     <Tooltip {...chartTooltipStyle} />
-                    <Bar dataKey="call_count" name="Звонков" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="call_count" name="Звонков" fill="#6366f1" radius={[3, 3, 0, 0]} maxBarSize={22} />
                   </BarChart>
                 </ResponsiveContainer>
               )}

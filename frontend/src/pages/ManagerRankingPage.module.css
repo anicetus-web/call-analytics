@@ -1,0 +1,115 @@
+.breadcrumb {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: inline-block;
+  margin-bottom: 14px;
+  transition: color 0.15s;
+}
+.breadcrumb:hover { color: var(--accent-pink); }
+
+.header { margin-bottom: 20px; }
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.filterSelect, .filterDate {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text);
+  color-scheme: dark;
+}
+
+.dash { color: var(--text-faint); }
+
+.state { color: var(--text-muted); padding: 20px 0; }
+.error { color: #f87171; }
+.empty { color: var(--text-faint); padding: 40px 0; font-size: 14px; text-align: center; }
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 28px 36px 160px 1fr 48px 60px;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.row:hover {
+  border-color: var(--accent-pink);
+  transform: translateX(2px);
+}
+
+.rank {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.name {
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.barTrack {
+  height: 6px;
+  background: var(--bg-hover);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.pct {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: right;
+}
+
+.count {
+  font-size: 11px;
+  color: var(--text-faint);
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .row { grid-template-columns: 24px 32px 1fr 44px; }
+  .barTrack, .count { display: none; }
+}
