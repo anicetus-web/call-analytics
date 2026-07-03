@@ -316,6 +316,60 @@ export const getHeatmap = (params: GlobalAnalyticsParams = {}) =>
 export const getGlobalManagerSummary = (params: GlobalAnalyticsParams = {}) =>
   api.get<ManagerSummary[]>('/analytics/managers', { params: globalParams(params) }).then(r => r.data)
 
+export interface TopErrorItem {
+  metric_item_id: number
+  metric_name: string
+  project_id: number
+  project_name: string
+  fail_count: number
+  total_count: number
+  fail_rate: number
+}
+
+export interface QualityDistribution {
+  high: number
+  medium: number
+  low: number
+  total: number
+}
+
+export interface ManagerTrendItem {
+  user_id: number
+  name: string
+  avg_score: number
+  call_count: number
+  prev_avg_score: number | null
+  delta: number | null
+}
+
+export interface Kpi {
+  avg_score: number
+  avg_score_delta: number | null
+  calls_analyzed: number
+  best_manager: ManagerTrendItem | null
+  main_problem: TopErrorItem | null
+}
+
+export interface KeywordItem {
+  word: string
+  count: number
+}
+
+export const getKpi = (projectId?: number) =>
+  api.get<Kpi>('/analytics/kpi', { params: { project_id: projectId } }).then(r => r.data)
+
+export const getTopErrors = (params: GlobalAnalyticsParams = {}, limit = 5) =>
+  api.get<TopErrorItem[]>('/analytics/top-errors', { params: { ...globalParams(params), limit } }).then(r => r.data)
+
+export const getQualityDistribution = (params: GlobalAnalyticsParams = {}) =>
+  api.get<QualityDistribution>('/analytics/quality-distribution', { params: globalParams(params) }).then(r => r.data)
+
+export const getManagersTrend = (projectId?: number) =>
+  api.get<ManagerTrendItem[]>('/analytics/managers/trend', { params: { project_id: projectId } }).then(r => r.data)
+
+export const getKeywords = (params: GlobalAnalyticsParams = {}, limit = 15) =>
+  api.get<KeywordItem[]>('/analytics/keywords', { params: { ...globalParams(params), limit } }).then(r => r.data)
+
 // ── Per-manager analytics (manager detail page) ────────────────────────────
 
 export interface ManagerOverview {

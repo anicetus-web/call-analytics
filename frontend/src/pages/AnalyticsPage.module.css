@@ -34,6 +34,12 @@
 
 .dash { color: var(--text-faint); }
 
+.filterNote {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-left: 4px;
+}
+
 .state { color: var(--text-muted); padding: 20px 0; }
 .error { color: #f87171; }
 .empty { color: var(--text-faint); padding: 30px 0; font-size: 13px; text-align: center; }
@@ -148,7 +154,157 @@
   white-space: nowrap;
 }
 
+.sectionHint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.deltaUp { color: #10b981; font-size: 12px; font-weight: 600; }
+.deltaDown { color: #ef4444; font-size: 12px; font-weight: 600; }
+.deltaFlat { color: var(--text-faint); font-size: 12px; font-weight: 600; }
+
+.donutRow {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.donutLegend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 140px;
+}
+
+.donutLegendRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.donutDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.donutCount {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.donutTotal {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.errorList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.errorRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-hover);
+  border-radius: var(--radius-sm);
+}
+
+.errorName {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.errorProject {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.errorCount {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f87171;
+  white-space: nowrap;
+}
+
+.rankList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rankRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-hover);
+  border-radius: var(--radius-sm);
+}
+
+.rankMedal {
+  font-size: 16px;
+  width: 22px;
+  text-align: center;
+  color: #f87171;
+  flex-shrink: 0;
+}
+
+.rankName {
+  font-size: 13px;
+  color: var(--text);
+  flex: 1;
+}
+
+.rankScore {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.skillsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: center;
+}
+
+.keywordCloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.keywordChip {
+  background: var(--bg-hover);
+  color: var(--text);
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.keywordCount {
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
 @media (max-width: 1100px) {
   .tiles { grid-template-columns: repeat(2, 1fr); }
   .grid { grid-template-columns: 1fr; }
+  .skillsRow { grid-template-columns: 1fr; }
 }

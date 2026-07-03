@@ -37,6 +37,8 @@ optional — omitted means "across every project this manager belongs to".
   GET /api/analytics/managers/{user_id}/heatmap   — weekday x hour for one manager
 """
 
+import re
+from collections import Counter
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Annotated
 
@@ -47,8 +49,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import require_admin, TokenData
 from database import (
-    Project, Call, CallStatus, AnalysisResult, MetricItem, User, get_db,
+    Project, Call, CallStatus, AnalysisResult, MetricItem, User, Transcription, get_db,
 )
+
+# Common Russian stopwords + filler words, excluded from the keyword-frequency endpoint.
+_STOPWORDS = {
+    "и", "в", "не", "на", "я", "что", "он", "с", "как", "а", "то", "все", "она", "так", "его",
+    "но", "да", "ты", "к", "у", "же", "вы", "за", "бы", "по", "только", "её", "мне", "было",
+    "вот", "от", "меня", "ещё", "нет", "о", "из", "ему", "теперь", "когда", "даже", "ну",
+    "вдруг", "ли", "если", "уже", "или", "ни", "быть", "был", "него", "до", "вас", "нибудь",
+    "опять", "уж", "вам", "ведь", "там", "потом", "себя", "ничего", "ей", "может", "они",
+    "тут", "где", "есть", "надо", "ней", "для", "мы", "тебя", "их", "чем", "была", "сам",
+    "чтобы", "без", "будто", "чего", "раз", "тоже", "себе", "под", "будет", "тогда", "кто",
+    "этот", "того", "потому", "этого", "какой", "совсем", "ним", "здесь", "этом", "один",
+    "почти", "мой", "тем", "нее", "сейчас", "были", "куда", "зачем", "всех", "никогда",
+    "можно", "при", "наконец", "два", "об", "другой", "хоть", "после", "над", "больше",
+    "тот", "через", "эти", "нас", "про", "всего", "них", "какая", "много", "разве", "три",
+    "эту", "моя", "впрочем", "хорошо", "свою", "этой", "перед", "иногда", "лучше", "чуть",
+    "том", "нельзя", "такой", "им", "более", "всегда", "конечно", "всю", "между", "здравствуйте",
+    "алло", "спасибо", "пожалуйста",
+}
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -105,6 +125,45 @@ class ManagerOverviewOut(BaseModel):
     avg_score: float
     active_days: int
     last_call_at: str | None  # ISO datetime, null if no calls in range
+
+
+class TopErrorItem(BaseModel):
+    metric_item_id: int
+    metric_name: str
+    project_id: int
+    project_name: str
+    fail_count: int
+    total_count: int
+    fail_rate: float
+
+
+class QualityDistributionOut(BaseModel):
+    high: int   # per-call avg score >= 0.8
+    medium: int  # 0.5 <= avg score < 0.8
+    low: int    # avg score < 0.5
+    total: int
+
+
+class ManagerTrendItem(BaseModel):
+    user_id: int
+    name: str
+    avg_score: float
+    call_count: int
+    prev_avg_score: float | None
+    delta: float | None  # avg_score - prev_avg_score; null if no calls in the prior period
+
+
+class KpiOut(BaseModel):
+    avg_score: float
+    avg_score_delta: float | None  # this week's avg_score minus last week's; null if no prior data
+    calls_analyzed: int
+    best_manager: ManagerTrendItem | None
+    main_problem: TopErrorItem | None
+
+
+class KeywordItem(BaseModel):
+    word: str
+    count: int
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -596,3 +655,243 @@ async def manager_heatmap(
         HeatmapCell(weekday=int(row.weekday), hour=int(row.hour), call_count=row.call_count)
         for row in rows
     ]
+
+
+# ── Manager-quality dashboard (top errors, quality mix, trend, keywords, KPI) ─
+# These back the redesigned "Аналитика" page, which is oriented around
+# evaluating manager/call quality rather than raw call volume.
+
+async def _fetch_top_errors(
+    db: AsyncSession, *,
+    project_id: int | None, date_from: date | None, date_to: date | None, limit: int,
+) -> list[TopErrorItem]:
+    """Metric items most often scored below 1.0 ("failed"), across all projects
+    unless project_id is given. Each row carries its project name because metric
+    item names are only unique within a project, not globally."""
+    fail_count_expr = func.count(AnalysisResult.id).filter(AnalysisResult.score < 1.0)
+    total_count_expr = func.count(AnalysisResult.id)
+
+    q = _apply_common_filters(
+        select(
+            MetricItem.id,
+            MetricItem.name,
+            Project.id.label("project_id"),
+            Project.name.label("project_name"),
+            fail_count_expr.label("fail_count"),
+            total_count_expr.label("total_count"),
+        )
+        .join(AnalysisResult, AnalysisResult.metric_item_id == MetricItem.id)
+        .join(Call, Call.id == AnalysisResult.call_id)
+        .join(Project, Project.id == Call.project_id)
+        .where(Call.status == CallStatus.DONE, MetricItem.is_active.is_(True))
+        .group_by(MetricItem.id, MetricItem.name, Project.id, Project.name)
+        .having(fail_count_expr > 0)
+        .order_by(fail_count_expr.desc())
+        .limit(limit),
+        project_id=project_id, date_from=date_from, date_to=date_to,
+    )
+    rows = (await db.execute(q)).all()
+    return [
+        TopErrorItem(
+            metric_item_id=r.id,
+            metric_name=r.name,
+            project_id=r.project_id,
+            project_name=r.project_name,
+            fail_count=r.fail_count,
+            total_count=r.total_count,
+            fail_rate=round(r.fail_count / r.total_count, 3) if r.total_count else 0.0,
+        )
+        for r in rows
+    ]
+
+
+async def _fetch_managers_trend(
+    db: AsyncSession, *, project_id: int | None,
+) -> list[ManagerTrendItem]:
+    """Manager leaderboard for the last 7 days, with each manager's avg score
+    from the previous 7 days for comparison. Fixed weekly window regardless of
+    the page's date filter — this answers "who's improving right now", not an
+    arbitrary custom range."""
+    now = datetime.now(timezone.utc)
+    week_start = now - timedelta(days=7)
+    prev_week_start = now - timedelta(days=14)
+
+    def _scope(q):
+        if project_id is not None:
+            q = q.where(Call.project_id == project_id)
+        return q
+
+    current_q = _scope(
+        select(
+            User.id,
+            User.name,
+            func.avg(AnalysisResult.score).label("avg_score"),
+            func.count(func.distinct(Call.id)).label("call_count"),
+        )
+        .join(Call, Call.user_id == User.id)
+        .join(AnalysisResult, AnalysisResult.call_id == Call.id)
+        .where(Call.status == CallStatus.DONE, Call.created_at >= week_start)
+        .group_by(User.id, User.name)
+    )
+    prev_q = _scope(
+        select(User.id, func.avg(AnalysisResult.score).label("avg_score"))
+        .join(Call, Call.user_id == User.id)
+        .join(AnalysisResult, AnalysisResult.call_id == Call.id)
+        .where(
+            Call.status == CallStatus.DONE,
+            Call.created_at >= prev_week_start,
+            Call.created_at < week_start,
+        )
+        .group_by(User.id)
+    )
+    current_rows = (await db.execute(current_q)).all()
+    prev_map = {r.id: float(r.avg_score) for r in (await db.execute(prev_q)).all() if r.avg_score is not None}
+
+    result = []
+    for r in current_rows:
+        avg = float(r.avg_score) if r.avg_score is not None else 0.0
+        prev = prev_map.get(r.id)
+        result.append(ManagerTrendItem(
+            user_id=r.id,
+            name=r.name,
+            avg_score=round(avg, 3),
+            call_count=r.call_count,
+            prev_avg_score=round(prev, 3) if prev is not None else None,
+            delta=round(avg - prev, 3) if prev is not None else None,
+        ))
+    result.sort(key=lambda m: m.avg_score, reverse=True)
+    return result
+
+
+@router.get("/top-errors", response_model=list[TopErrorItem])
+async def top_errors(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    project_id: int | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    limit: int = Query(default=5, ge=1, le=20),
+) -> list[TopErrorItem]:
+    return await _fetch_top_errors(db, project_id=project_id, date_from=date_from, date_to=date_to, limit=limit)
+
+
+@router.get("/quality-distribution", response_model=QualityDistributionOut)
+async def quality_distribution(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    project_id: int | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+) -> QualityDistributionOut:
+    """Buckets DONE calls by their own average score (across all their metric
+    items) into high (>=0.8) / medium (0.5-0.8) / low (<0.5)."""
+    call_avg_subq = _apply_common_filters(
+        select(Call.id.label("call_id"), func.avg(AnalysisResult.score).label("call_avg"))
+        .join(AnalysisResult, AnalysisResult.call_id == Call.id)
+        .where(Call.status == CallStatus.DONE)
+        .group_by(Call.id),
+        project_id=project_id, date_from=date_from, date_to=date_to,
+    ).subquery()
+
+    q = select(
+        func.count().filter(call_avg_subq.c.call_avg >= 0.8).label("high"),
+        func.count().filter(call_avg_subq.c.call_avg >= 0.5, call_avg_subq.c.call_avg < 0.8).label("medium"),
+        func.count().filter(call_avg_subq.c.call_avg < 0.5).label("low"),
+    ).select_from(call_avg_subq)
+
+    row = (await db.execute(q)).one()
+    return QualityDistributionOut(
+        high=row.high, medium=row.medium, low=row.low, total=row.high + row.medium + row.low,
+    )
+
+
+@router.get("/managers/trend", response_model=list[ManagerTrendItem])
+async def managers_trend(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    project_id: int | None = Query(default=None),
+) -> list[ManagerTrendItem]:
+    return await _fetch_managers_trend(db, project_id=project_id)
+
+
+@router.get("/kpi", response_model=KpiOut)
+async def kpi(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    project_id: int | None = Query(default=None),
+) -> KpiOut:
+    """Top-of-page KPI row: this week's avg score (+ delta vs last week), how
+    many calls have been scored, the top manager this week, and the most
+    common scoring failure. All fixed to the last-7-days window, same as
+    /managers/trend, so the numbers on the page agree with each other."""
+    now = datetime.now(timezone.utc)
+    week_start = now - timedelta(days=7)
+    prev_week_start = now - timedelta(days=14)
+
+    def _scope(q):
+        if project_id is not None:
+            q = q.where(Call.project_id == project_id)
+        return q
+
+    current_q = _scope(
+        select(func.avg(AnalysisResult.score), func.count(func.distinct(Call.id)))
+        .join(Call, Call.id == AnalysisResult.call_id)
+        .where(Call.status == CallStatus.DONE, Call.created_at >= week_start)
+    )
+    prev_q = _scope(
+        select(func.avg(AnalysisResult.score))
+        .join(Call, Call.id == AnalysisResult.call_id)
+        .where(
+            Call.status == CallStatus.DONE,
+            Call.created_at >= prev_week_start,
+            Call.created_at < week_start,
+        )
+    )
+    current_avg, calls_analyzed = (await db.execute(current_q)).one()
+    prev_avg = (await db.execute(prev_q)).scalar()
+
+    trend = await _fetch_managers_trend(db, project_id=project_id)
+    top_errors_list = await _fetch_top_errors(
+        db, project_id=project_id, date_from=week_start.date(), date_to=None, limit=1,
+    )
+
+    avg_score = float(current_avg) if current_avg is not None else 0.0
+    return KpiOut(
+        avg_score=round(avg_score, 3),
+        avg_score_delta=round(avg_score - float(prev_avg), 3) if prev_avg is not None else None,
+        calls_analyzed=calls_analyzed or 0,
+        best_manager=trend[0] if trend else None,
+        main_problem=top_errors_list[0] if top_errors_list else None,
+    )
+
+
+@router.get("/keywords", response_model=list[KeywordItem])
+async def keywords(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    project_id: int | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    limit: int = Query(default=15, ge=1, le=50),
+) -> list[KeywordItem]:
+    """Most frequent words across recent transcripts in scope, excluding common
+    Russian stopwords. Capped to the 300 most recent matching calls to keep
+    the request cheap — this is a rough word-frequency signal, not exhaustive
+    text analytics."""
+    q = _apply_common_filters(
+        select(Transcription.full_text)
+        .join(Call, Call.id == Transcription.call_id)
+        .where(Call.status == CallStatus.DONE)
+        .order_by(Call.created_at.desc())
+        .limit(300),
+        project_id=project_id, date_from=date_from, date_to=date_to,
+    )
+    rows = (await db.execute(q)).all()
+
+    counter: Counter[str] = Counter()
+    for (text,) in rows:
+        for word in re.findall(r"[а-яё]{4,}", text.lower()):
+            if word not in _STOPWORDS:
+                counter[word] += 1
+
+    return [KeywordItem(word=w, count=c) for w, c in counter.most_common(limit)]
