@@ -26,13 +26,21 @@
   margin-top: 3px;
 }
 
+.tabsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+
 .tabs {
   display: flex;
   gap: 6px;
-  margin-bottom: 20px;
   flex-wrap: wrap;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 10px;
 }
 
 .tab, .activeTab {
@@ -47,6 +55,29 @@
 .tab:hover { background: var(--bg-hover); color: var(--text); }
 .activeTab {
   background: linear-gradient(135deg, rgba(236,72,153,0.18), rgba(99,102,241,0.18));
+  color: #fff;
+}
+
+.periodToggle {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-hover);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+}
+
+.periodBtn, .periodBtnActive {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  transition: background 0.15s, color 0.15s;
+}
+.periodBtn:hover { color: var(--text); }
+.periodBtnActive {
+  background: linear-gradient(135deg, var(--accent-pink), var(--accent-blue));
   color: #fff;
 }
 

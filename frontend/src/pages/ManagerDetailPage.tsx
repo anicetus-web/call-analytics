@@ -11,7 +11,12 @@ import Heatmap from '../components/Heatmap'
 import SessionStatus from '../components/SessionStatus'
 import styles from './ManagerDetailPage.module.css'
 
-const ACTIVITY_WINDOW_DAYS = 30
+const PERIODS = [
+  { key: 'day', label: 'День', days: 1 },
+  { key: 'week', label: 'Неделя', days: 7 },
+  { key: 'month', label: 'Месяц', days: 30 },
+] as const
+type PeriodKey = typeof PERIODS[number]['key']
 
 const STATUS_LABELS: Record<string, string> = {
   uploaded: 'Загружен', converting: 'Конвертация', transcribing: 'Транскрипция',
@@ -38,6 +43,12 @@ function fmtRelative(iso: string | null): string {
   return new Date(iso).toLocaleDateString('ru-RU')
 }
 
+function pluralDays(n: number): string {
+  if (n % 10 === 1 && n % 100 !== 11) return 'день'
+  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return 'дня'
+  return 'дней'
+}
+
 function isoDaysAgo(days: number): string {
   const d = new Date()
   d.setDate(d.getDate() - days)
@@ -52,6 +63,7 @@ export default function ManagerDetailPage() {
   const [managerLoaded, setManagerLoaded] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
   const [tab, setTab] = useState<'all' | number>('all')
+  const [period, setPeriod] = useState<PeriodKey>('month')
 
   const [activeDay, setActiveDay] = useState<{ date: string; active: boolean } | null>(null)
 
@@ -65,7 +77,10 @@ export default function ManagerDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   const requestIdRef = useRef(0)
-  const dateFrom = useMemo(() => isoDaysAgo(ACTIVITY_WINDOW_DAYS), [])
+  const windowDays = PERIODS.find(p => p.key === period)!.days
+  // windowDays - 1: "День" (1) must resolve to today only, not today+yesterday —
+  // matches the activityStrip loop below, which also starts at isoDaysAgo(windowDays - 1).
+  const dateFrom = useMemo(() => isoDaysAgo(windowDays - 1), [windowDays])
 
   useEffect(() => {
     Promise.all([getManagers(), getProjects(true)])
@@ -118,12 +133,12 @@ export default function ManagerDetailPage() {
 
   const activityStrip = useMemo(() => {
     const days: { date: string; active: boolean }[] = []
-    for (let i = ACTIVITY_WINDOW_DAYS - 1; i >= 0; i--) {
+    for (let i = windowDays - 1; i >= 0; i--) {
       const date = isoDaysAgo(i)
       days.push({ date, active: activeDatesSet.has(date) })
     }
     return days
-  }, [activeDatesSet])
+  }, [activeDatesSet, windowDays])
 
   const missedDaysCount = activityStrip.filter(d => !d.active).length
 
@@ -147,19 +162,32 @@ export default function ManagerDetailPage() {
         </div>
       </div>
 
-      <div className={styles.tabs}>
-        <button className={tab === 'all' ? styles.activeTab : styles.tab} onClick={() => setTab('all')}>
-          Все проекты
-        </button>
-        {projects.map(p => (
-          <button
-            key={p.id}
-            className={tab === p.id ? styles.activeTab : styles.tab}
-            onClick={() => setTab(p.id)}
-          >
-            {p.name}
+      <div className={styles.tabsRow}>
+        <div className={styles.tabs}>
+          <button className={tab === 'all' ? styles.activeTab : styles.tab} onClick={() => setTab('all')}>
+            Все проекты
           </button>
-        ))}
+          {projects.map(p => (
+            <button
+              key={p.id}
+              className={tab === p.id ? styles.activeTab : styles.tab}
+              onClick={() => setTab(p.id)}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+        <div className={styles.periodToggle}>
+          {PERIODS.map(p => (
+            <button
+              key={p.key}
+              className={period === p.key ? styles.periodBtnActive : styles.periodBtn}
+              onClick={() => setPeriod(p.key)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {error ? (
@@ -173,7 +201,7 @@ export default function ManagerDetailPage() {
               <span className={styles.tileIcon}><IconPhoneWave size={18} /></span>
               <div>
                 <div className={styles.tileValue}>{overview.total_calls}</div>
-                <div className={styles.tileLabel}>Звонков за 30 дней</div>
+                <div className={styles.tileLabel}>Звонков за {windowDays} {pluralDays(windowDays)}</div>
               </div>
             </div>
             <div className={styles.tile}>
@@ -201,9 +229,9 @@ export default function ManagerDetailPage() {
 
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>
-              Активность за последние {ACTIVITY_WINDOW_DAYS} дней
+              Активность за последние {windowDays} {pluralDays(windowDays)}
               <span className={styles.sectionHint}>
-                {' '}— работал {overview.active_days} из {ACTIVITY_WINDOW_DAYS} дней, пропусков: {missedDaysCount}
+                {' '}— работал {overview.active_days} из {windowDays} {pluralDays(windowDays)}, пропусков: {missedDaysCount}
               </span>
             </h2>
             <div className={styles.infoBar}>
