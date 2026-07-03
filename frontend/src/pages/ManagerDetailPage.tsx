@@ -52,6 +52,8 @@ export default function ManagerDetailPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [tab, setTab] = useState<'all' | number>('all')
 
+  const [activeDay, setActiveDay] = useState<{ date: string; active: boolean } | null>(null)
+
   const [overview, setOverview] = useState<ManagerOverview | null>(null)
   const [metrics, setMetrics] = useState<MetricSummary[]>([])
   const [timeline, setTimeline] = useState<CallsTimelinePoint[]>([])
@@ -202,12 +204,25 @@ export default function ManagerDetailPage() {
                 {' '}— работал {overview.active_days} из {ACTIVITY_WINDOW_DAYS} дней, пропусков: {missedDaysCount}
               </span>
             </h2>
+            <div className={styles.infoBar}>
+              {activeDay ? (
+                <span className={styles.infoChip}>
+                  {new Date(activeDay.date).toLocaleDateString('ru-RU')} — {activeDay.active ? 'были звонки' : 'звонков не было'}
+                </span>
+              ) : (
+                <span className={styles.infoHint}>Наведите или нажмите на день</span>
+              )}
+            </div>
             <div className={styles.activityStrip}>
               {activityStrip.map(d => (
                 <span
                   key={d.date}
-                  className={d.active ? styles.activityDayActive : styles.activityDay}
-                  title={`${new Date(d.date).toLocaleDateString('ru-RU')} — ${d.active ? 'были звонки' : 'звонков не было'}`}
+                  className={activeDay?.date === d.date
+                    ? (d.active ? styles.activityDayActiveSelected : styles.activityDaySelected)
+                    : (d.active ? styles.activityDayActive : styles.activityDay)}
+                  onMouseEnter={() => setActiveDay(d)}
+                  onMouseLeave={() => setActiveDay(null)}
+                  onClick={() => setActiveDay(d)}
                 />
               ))}
             </div>

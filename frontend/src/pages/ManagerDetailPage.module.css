@@ -117,20 +117,49 @@
   color: var(--text-muted);
 }
 
+.infoBar {
+  display: flex;
+  align-items: center;
+  min-height: 26px;
+  margin-bottom: 10px;
+}
+
+.infoChip {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent-pink), var(--accent-blue));
+  padding: 5px 12px;
+  border-radius: 999px;
+}
+
+.infoHint {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
 .activityStrip {
   display: flex;
   gap: 3px;
   flex-wrap: wrap;
 }
 
-.activityDay, .activityDayActive {
+.activityDay, .activityDayActive, .activityDaySelected, .activityDayActiveSelected {
   width: 16px;
   height: 16px;
   border-radius: 4px;
   background: var(--bg-hover);
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
 }
-.activityDayActive {
+.activityDayActive, .activityDayActiveSelected {
   background: var(--accent-pink);
+}
+.activityDaySelected, .activityDayActiveSelected {
+  box-shadow: 0 0 0 2px #fff, 0 0 8px rgba(236,72,153,0.6);
+  transform: scale(1.25);
+  position: relative;
+  z-index: 1;
 }
 
 .grid {
