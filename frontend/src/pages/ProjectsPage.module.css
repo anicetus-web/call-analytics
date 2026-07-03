@@ -72,8 +72,9 @@
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px 20px 8px;
-  margin-bottom: 20px;
+  padding: 18px 20px 16px;
+  margin-top: 24px;
+  margin-bottom: 24px;
 }
 
 .trendHeader {
