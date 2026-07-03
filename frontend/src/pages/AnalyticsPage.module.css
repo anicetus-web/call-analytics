@@ -128,7 +128,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .section {
@@ -138,6 +138,9 @@
   padding: 16px 18px;
   transition: border-color 0.15s;
   min-width: 0;
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
 }
 .section:hover {
   border-color: rgba(236,72,153,0.4);
@@ -165,9 +168,9 @@
 
 .metricRow {
   display: grid;
-  grid-template-columns: 140px 1fr 44px 60px;
+  grid-template-columns: 80px 1fr 32px 40px;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .metricName {
@@ -378,7 +381,7 @@
   text-align: center;
   font-size: 12px;
   color: var(--accent-pink);
-  margin-top: 10px;
+  margin-top: auto;
   padding-top: 10px;
   border-top: 1px solid var(--border);
   transition: opacity 0.15s;
@@ -386,10 +389,11 @@
 .showAllLink:hover { opacity: 0.75; }
 
 .skillsRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
 }
 
 .keywordList {

@@ -338,22 +338,20 @@ export default function AnalyticsPage() {
               </div>
             )}
 
-            <div className={styles.section} style={{ gridColumn: '1 / -1' }}>
+            <div className={styles.section}>
               <h2 className={styles.sectionTitle}>Навыки и соблюдение скрипта</h2>
-              <p className={styles.sectionDesc}>
-                Средний балл AI по каждому этапу разговора — где менеджеры стабильно теряют баллы, а где справляются хорошо.
-              </p>
+              <p className={styles.sectionDesc}>Где менеджеры стабильно теряют баллы AI</p>
               {!projectId ? (
-                <div className={styles.empty}>Выберите проект в фильтре выше, чтобы увидеть разбивку по критериям — у разных проектов свои критерии оценки</div>
+                <div className={styles.empty}>Выберите проект в фильтре, чтобы увидеть разбивку — у каждого свои критерии</div>
               ) : skills.length === 0 ? (
                 <div className={styles.empty}>Нет оценённых звонков за этот период</div>
               ) : (
                 <div className={styles.skillsRow}>
-                  <ResponsiveContainer width="100%" height={260}>
+                  <ResponsiveContainer width="100%" height={170}>
                     <RadarChart data={skills.map(s => ({ name: s.name, value: Math.round(s.avg_score * 100) }))}>
                       <PolarGrid stroke="var(--border)" />
-                      <PolarAngleAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
-                      <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9, fill: 'var(--text-faint)' }} />
+                      <PolarAngleAxis dataKey="name" tick={{ fontSize: 9, fill: 'var(--text-muted)' }} />
+                      <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 8, fill: 'var(--text-faint)' }} />
                       <Radar dataKey="value" stroke="#ec4899" fill="#ec4899" fillOpacity={0.35} />
                       <Tooltip {...chartTooltipStyle} formatter={(v: number) => `${v}%`} />
                     </RadarChart>

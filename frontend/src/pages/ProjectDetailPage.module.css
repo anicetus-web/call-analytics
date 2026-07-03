@@ -118,11 +118,27 @@
   gap: 24px;
 }
 
+.analyticsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
 .section {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 24px;
+  min-width: 0;
+}
+
+.sectionWide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .analyticsGrid { grid-template-columns: 1fr; }
 }
 
 .sectionTitle {

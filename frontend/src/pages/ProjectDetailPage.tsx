@@ -175,9 +175,9 @@ export default function ProjectDetailPage() {
       )}
 
       {tab === 'analytics' && (
-        <div className={styles.analytics}>
+        <div className={styles.analyticsGrid}>
           {timeline.length > 0 && (
-            <div className={styles.section}>
+            <div className={`${styles.section} ${styles.sectionWide}`}>
               <h2 className={styles.sectionTitle}>Средний балл по дням</h2>
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={timeline}>
