@@ -62,8 +62,11 @@
   justify-content: space-between;
   padding: 14px 20px;
   border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
 }
 .row:last-child { border-bottom: none; }
+.row:hover { background: var(--bg-hover); }
 
 .rowLeft {
   display: flex;

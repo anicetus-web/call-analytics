@@ -315,3 +315,27 @@ export const getHeatmap = (params: GlobalAnalyticsParams = {}) =>
 
 export const getGlobalManagerSummary = (params: GlobalAnalyticsParams = {}) =>
   api.get<ManagerSummary[]>('/analytics/managers', { params: globalParams(params) }).then(r => r.data)
+
+// ── Per-manager analytics (manager detail page) ────────────────────────────
+
+export interface ManagerOverview {
+  total_calls: number
+  avg_duration_seconds: number
+  avg_score: number
+  active_days: number
+  last_call_at: string | null
+}
+
+export const getManagerOverview = (userId: number, params: GlobalAnalyticsParams = {}) =>
+  api.get<ManagerOverview>(`/analytics/managers/${userId}/overview`, { params: globalParams(params) }).then(r => r.data)
+
+export const getManagerMetrics = (userId: number, projectId: number, dateFrom?: string, dateTo?: string) =>
+  api.get<MetricSummary[]>(`/analytics/managers/${userId}/metrics`, {
+    params: { project_id: projectId, date_from: dateFrom, date_to: dateTo },
+  }).then(r => r.data)
+
+export const getManagerTimeline = (userId: number, params: GlobalAnalyticsParams = {}) =>
+  api.get<CallsTimelinePoint[]>(`/analytics/managers/${userId}/timeline`, { params: globalParams(params) }).then(r => r.data)
+
+export const getManagerHeatmap = (userId: number, params: GlobalAnalyticsParams = {}) =>
+  api.get<HeatmapCell[]>(`/analytics/managers/${userId}/heatmap`, { params: globalParams(params) }).then(r => r.data)

@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { getManagers, createManager, updateManager, deleteManager, Manager } from '../api'
 import Modal from '../components/Modal'
 import Avatar from '../components/Avatar'
@@ -71,7 +72,7 @@ export default function ManagersPage() {
       ) : (
         <div className={styles.list}>
           {filtered.map(m => (
-            <div key={m.id} className={styles.row}>
+            <Link to={`/managers/${m.id}`} key={m.id} className={styles.row}>
               <div className={styles.rowLeft}>
                 <Avatar name={m.name} size={36} />
                 <div>
@@ -83,10 +84,20 @@ export default function ManagersPage() {
                 </div>
               </div>
               <div className={styles.rowActions}>
-                <button className={formStyles.btnLink} onClick={() => setEditing(m)}>Изменить</button>
-                <button className={formStyles.btnLink} onClick={() => handleDelete(m)}>Удалить</button>
+                <button
+                  className={formStyles.btnLink}
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); setEditing(m) }}
+                >
+                  Изменить
+                </button>
+                <button
+                  className={formStyles.btnLink}
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); handleDelete(m) }}
+                >
+                  Удалить
+                </button>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

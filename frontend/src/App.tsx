@@ -6,6 +6,7 @@ import ProjectDetailPage from './pages/ProjectDetailPage'
 import CallDetailPage from './pages/CallDetailPage'
 import CallsPage from './pages/CallsPage'
 import ManagersPage from './pages/ManagersPage'
+import ManagerDetailPage from './pages/ManagerDetailPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import Layout from './components/Layout'
 
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="calls" element={<CallsPage />} />
           <Route path="calls/:id" element={<CallDetailPage />} />
           <Route path="managers" element={<ManagersPage />} />
+          <Route path="managers/:id" element={<ManagerDetailPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
         </Route>
       </Routes>
