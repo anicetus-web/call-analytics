@@ -173,7 +173,8 @@ export default function CallsPage() {
           className={onlyErrors ? styles.errorToggleActive : styles.errorToggle}
           onClick={() => { setOnlyErrors(v => !v); setStatus('') }}
         >
-          <IconAlert size={14} /> Только ошибки
+          <IconAlert size={14} />
+          Только ошибки
         </button>
       </div>
 

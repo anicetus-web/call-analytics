@@ -127,7 +127,8 @@ export default function ProjectsPage() {
             )}
           </div>
           <button className={formStyles.btnPrimary} onClick={() => setShowCreate(true)}>
-            <IconPlus size={16} /> Новый проект
+            <IconPlus size={16} />
+            Новый проект
           </button>
         </div>
       </div>

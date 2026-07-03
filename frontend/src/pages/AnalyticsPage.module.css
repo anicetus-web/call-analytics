@@ -221,7 +221,7 @@
 .donutRow {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 /* Recharts gives each Pie sector tabIndex=0 for accessibility; clicking one
@@ -234,8 +234,8 @@
 
 .donutWrap {
   position: relative;
-  width: 160px;
-  height: 160px;
+  width: 220px;
+  height: 220px;
   flex-shrink: 0;
 }
 

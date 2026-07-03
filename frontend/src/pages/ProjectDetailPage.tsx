@@ -486,7 +486,8 @@ function MembersEditor({ project, onChanged }: { project: Project; onChanged: ()
             ))}
           </select>
           <button className={styles.btnAddManager} type="submit" disabled={!selected}>
-            <IconPlus size={16} /> Добавить менеджера
+            <IconPlus size={16} />
+            Добавить менеджера
           </button>
         </form>
       )}
