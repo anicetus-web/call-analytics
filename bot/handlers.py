@@ -23,10 +23,13 @@ All API calls go through httpx to the local FastAPI server.
 import logging
 import os
 import uuid
+from html import escape as _esc
 from typing import Any
 
 import httpx
 from aiogram import Bot, Dispatcher, F, Router
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -41,7 +44,14 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
+# HTML parse mode is the default for every outgoing message from here on — any
+# dynamic text interpolated into a message (filenames, project/manager names)
+# MUST go through _esc() first, or a name containing "<"/"&" will make Telegram
+# reject the send outright.
+bot = Bot(
+    token=settings.TELEGRAM_BOT_TOKEN,
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 router = Router()
@@ -180,11 +190,19 @@ async def _upload_file(
             os.remove(tmp_path)
 
 
-_TOO_LARGE_MSG = (
-    "❌ Файл слишком большой — Telegram не позволяет боту скачивать файлы "
-    "крупнее 20 МБ. Сожмите запись или разбейте её на части."
+_SERVICE_UNAVAILABLE_MSG = "⚠️ Сервис временно недоступен, попробуйте позже."
+_NOT_IN_PROJECT_MSG = (
+    "👋 Добро пожаловать! Вы ещё не добавлены ни в один проект.\n"
+    "Обратитесь к администратору."
 )
-_GENERIC_FAIL_MSG = "❌ Не удалось загрузить файл. Попробуйте ещё раз."
+_SESSION_EXPIRED_MSG = "⚠️ Сессия устарела — пожалуйста, отправьте файл заново."
+
+_TOO_LARGE_MSG = (
+    "❌ <b>Файл слишком большой</b>\n\n"
+    "Telegram не позволяет боту скачивать файлы крупнее 20 МБ. "
+    "Сожмите запись или разбейте её на части."
+)
+_GENERIC_FAIL_MSG = "❌ <b>Не удалось загрузить файл</b>\n\nПопробуйте ещё раз."
 
 
 async def _upload_and_get_reply(
@@ -196,7 +214,11 @@ async def _upload_and_get_reply(
     except _FileTooLargeError:
         return _TOO_LARGE_MSG
     if call_id:
-        return f"✅ Звонок #{call_id} принят в обработку!"
+        return (
+            f"✅ <b>Звонок #{call_id} принят в обработку</b>\n\n"
+            f"🎙 Транскрибация → 🧠 AI-анализ → 📊 результат в панели.\n"
+            f"Проверить статус: /status"
+        )
     return reason or _GENERIC_FAIL_MSG
 
 
@@ -228,20 +250,21 @@ async def cmd_start(message: Message) -> None:
 
     projects = await _fetch_manager_projects(telegram_id)
     if projects is None:
-        await message.answer("Сервис временно недоступен, попробуйте позже.")
+        await message.answer(_SERVICE_UNAVAILABLE_MSG)
         return
     if not projects:
-        await message.answer(
-            "Добро пожаловать! Вы ещё не добавлены ни в один проект. "
-            "Обратитесь к администратору."
-        )
+        await message.answer(_NOT_IN_PROJECT_MSG)
         return
 
-    names = ", ".join(p["name"] for p in projects)
+    names = "\n".join(f"• {_esc(p['name'])}" for p in projects)
     await message.answer(
-        f"Привет! Я принимаю записи звонков для анализа.\n\n"
-        f"Ваши проекты: {names}\n\n"
-        f"Просто отправьте аудио или видеофайл со звонком."
+        "🎙 <b>Call Analytics</b>\n\n"
+        "Присылайте мне записи звонков — я передаю их на транскрибацию "
+        "и AI-оценку по критериям вашего проекта.\n\n"
+        f"<b>Ваши проекты:</b>\n{names}\n\n"
+        "━━━━━━━━━━━━━━━\n"
+        "📎 Отправьте аудио или видеофайл со звонком\n"
+        "📋 /status — статус последних звонков"
     )
 
 
@@ -261,7 +284,7 @@ async def cmd_status(message: Message) -> None:
             )
             user = user_result.scalar_one_or_none()
             if user is None:
-                await message.answer("Вы не зарегистрированы в системе.")
+                await message.answer("⚠️ Вы не зарегистрированы в системе.")
                 return
 
             calls_result = await session.execute(
@@ -273,11 +296,11 @@ async def cmd_status(message: Message) -> None:
             calls = calls_result.scalars().all()
     except Exception:
         logger.exception("DB error in /status for telegram_id=%d", telegram_id)
-        await message.answer("Сервис временно недоступен, попробуйте позже.")
+        await message.answer(_SERVICE_UNAVAILABLE_MSG)
         return
 
     if not calls:
-        await message.answer("У вас пока нет загруженных звонков.")
+        await message.answer("📭 У вас пока нет загруженных звонков.")
         return
 
     status_emoji = {
@@ -288,14 +311,23 @@ async def cmd_status(message: Message) -> None:
         "done": "✅",
         "error": "❌",
     }
+    status_label = {
+        "uploaded": "в очереди",
+        "converting": "конвертация",
+        "transcribing": "транскрибация",
+        "analyzing": "AI-анализ",
+        "done": "готово",
+        "error": "ошибка",
+    }
     lines = []
     for call in calls:
         emoji = status_emoji.get(call.status.value, "❓")
+        label = status_label.get(call.status.value, call.status.value)
         date_str = call.created_at.strftime("%d.%m %H:%M")
-        name = call.original_filename or f"звонок #{call.id}"
-        lines.append(f"{emoji} {date_str} — {name}")
+        name = _esc(call.original_filename or f"звонок #{call.id}")
+        lines.append(f"{emoji} <code>{date_str}</code> — {name}\n    <i>{label}</i>")
 
-    await message.answer("Последние 5 звонков:\n" + "\n".join(lines))
+    await message.answer("📋 <b>Последние 5 звонков</b>\n━━━━━━━━━━━━━━━\n" + "\n".join(lines))
 
 
 @router.message(Command("skip"), StateFilter(UploadFlow.waiting_comment))
@@ -363,7 +395,7 @@ async def cb_add_comment(callback: CallbackQuery, state: FSMContext) -> None:
         await state.clear()
         return
     await callback.message.edit_reply_markup(reply_markup=None)
-    await callback.message.answer("Напишите комментарий к звонку:")
+    await callback.message.answer("✍️ Напишите комментарий к звонку:")
     await state.set_state(UploadFlow.waiting_comment)
     await callback.answer()
 
@@ -381,9 +413,7 @@ async def cb_select_project(callback: CallbackQuery, state: FSMContext) -> None:
     # Guard: file_id is lost if the bot restarted between message and callback press
     if not data.get("file_id"):
         await callback.message.edit_reply_markup(reply_markup=None)
-        await callback.message.answer(
-            "Сессия устарела — пожалуйста, отправьте файл заново."
-        )
+        await callback.message.answer(_SESSION_EXPIRED_MSG)
         await state.clear()
         await callback.answer()
         return
@@ -393,20 +423,20 @@ async def cb_select_project(callback: CallbackQuery, state: FSMContext) -> None:
     telegram_id = callback.from_user.id
     projects = await _fetch_manager_projects(telegram_id)
     if projects is None:
-        await callback.message.answer("Сервис временно недоступен, попробуйте позже.")
+        await callback.message.answer(_SERVICE_UNAVAILABLE_MSG)
         await state.clear()
         await callback.answer()
         return
     user_id = next((p["user_id"] for p in projects if p["id"] == project_id), None)
     if user_id is None:
-        await callback.message.answer("Проект не найден.")
+        await callback.message.answer("⚠️ Проект не найден.")
         await state.clear()
         await callback.answer()
         return
 
     await state.update_data(project_id=project_id, user_id=user_id)
     await callback.message.answer(
-        "Хотите добавить комментарий к звонку?",
+        "💬 Хотите добавить комментарий к звонку?",
         reply_markup=_comment_keyboard(),
     )
     await callback.answer()
@@ -427,19 +457,17 @@ async def receive_file(message: Message, state: FSMContext) -> None:
 
     file_info = _extract_file_info(message)
     if file_info is None:
-        await message.answer("Неподдерживаемый тип файла.")
+        await message.answer("⚠️ Неподдерживаемый тип файла.")
         return
 
     file_id, filename = file_info
 
     projects = await _fetch_manager_projects(telegram_id)
     if projects is None:
-        await message.answer("Сервис временно недоступен, попробуйте позже.")
+        await message.answer(_SERVICE_UNAVAILABLE_MSG)
         return
     if not projects:
-        await message.answer(
-            "Вы не добавлены ни в один проект. Обратитесь к администратору."
-        )
+        await message.answer(_NOT_IN_PROJECT_MSG)
         return
 
     if len(projects) == 1:
@@ -451,13 +479,13 @@ async def receive_file(message: Message, state: FSMContext) -> None:
             user_id=project["user_id"],
         )
         await message.answer(
-            f"Файл получен. Хотите добавить комментарий?",
+            "📎 <b>Файл получен</b>\n\nХотите добавить комментарий?",
             reply_markup=_comment_keyboard(),
         )
     else:
         # Multiple projects — ask which one
         await state.update_data(file_id=file_id, filename=filename)
         await message.answer(
-            "К какому проекту относится этот звонок?",
+            "📂 <b>К какому проекту относится этот звонок?</b>",
             reply_markup=_projects_keyboard(projects),
         )
