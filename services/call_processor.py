@@ -27,6 +27,7 @@ from database import (
     Call, CallStatus, Transcription, AnalysisResult,
     MetricGroup, AsyncSessionLocal,
 )
+from database.connection import engine
 from services.file_converter import convert_to_wav, ConversionError
 from services.transcription import transcribe, TranscriptionError
 from services.analyzer import analyze_call, QuotaExhaustedError, AnalysisError
@@ -65,13 +66,25 @@ async def process_call(
     Concurrency: a session-level Postgres advisory lock keyed on call_id serializes
     processing of the same call. The pipeline commits between stages, so a
     transaction-scoped lock would release too early — we hold a session-level lock for
-    the whole pipeline and release it in finally. If another worker (or a duplicate
-    queue entry) already holds it, try-lock returns false and we skip, which prevents
-    double processing and AnalysisResult duplication.
+    the whole pipeline and release it in finally.
+
+    The lock is acquired and released on a single dedicated connection checked out
+    directly from the engine (NOT the ORM Session used for the pipeline). This is
+    deliberate: the pipeline session commits several times mid-run, and each commit
+    returns its underlying connection to the pool and may pick up a *different* one
+    on the next query — including while other coroutines (the bot handlers share this
+    same event loop and connection pool) run concurrently. If the lock were taken via
+    that session, unlocking it later could silently run on a different physical
+    connection than the one that acquired it (pg_advisory_unlock returns false, not an
+    error, when the current connection doesn't hold the lock) — leaking the lock
+    forever on whatever connection originally acquired it, permanently stuck as
+    "already being processed" for that call_id. Keeping the lock on its own
+    never-committed connection for the whole call guarantees lock and unlock always
+    hit the same backend session.
     """
-    async with AsyncSessionLocal() as session:
+    async with engine.connect() as lock_conn:
         lock_acquired = (
-            await session.execute(
+            await lock_conn.execute(
                 select(func.pg_try_advisory_lock(_ADVISORY_LOCK_NAMESPACE, call_id))
             )
         ).scalar_one()
@@ -80,73 +93,67 @@ async def process_call(
             return
 
         try:
-            result = await session.execute(
-                select(Call)
-                .where(Call.id == call_id)
-                .options(
-                    selectinload(Call.user),
-                    selectinload(Call.project),
-                    selectinload(Call.transcription),
-                )
-            )
-            call = result.scalar_one_or_none()
-
-            if call is None:
-                logger.error("process_call: call_id=%d not found", call_id)
-                return
-
-            if call.status == CallStatus.DONE:
-                logger.info("Call %d already done, skipping", call_id)
-                return
-
-            telegram_user_id: int | None = call.user.telegram_id
-
-            try:
-                await _run_pipeline(session, call)
-                await session.commit()
-
-                logger.info("Call %d processed successfully", call_id)
-                if notify_fn and telegram_user_id:
-                    await notify_fn(telegram_user_id, True, _success_summary(call))
-
-            except QuotaExhaustedError:
-                # Do not mark as error — leave in current status so it retries when quota is restored
-                await session.rollback()
-                logger.critical("OpenAI quota exhausted — call %d left in queue", call_id)
-                raise  # propagate to task_queue to pause processing
-
-            except Exception as exc:
-                await session.rollback()
-                async with AsyncSessionLocal() as err_session:
-                    err_result = await err_session.execute(select(Call).where(Call.id == call_id))
-                    err_call = err_result.scalar_one_or_none()
-                    if err_call:
-                        await _set_status(
-                            err_session, err_call,
-                            CallStatus.ERROR,
-                            error_message=str(exc)[:1000],
-                        )
-                        await err_session.commit()
-
-                logger.exception("Call %d failed: %s", call_id, exc)
-                if notify_fn and telegram_user_id:
-                    await notify_fn(
-                        telegram_user_id, False,
-                        "Не удалось обработать запись. Попробуйте загрузить ещё раз.",
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(Call)
+                    .where(Call.id == call_id)
+                    .options(
+                        selectinload(Call.user),
+                        selectinload(Call.project),
+                        selectinload(Call.transcription),
                     )
+                )
+                call = result.scalar_one_or_none()
+
+                if call is None:
+                    logger.error("process_call: call_id=%d not found", call_id)
+                    return
+
+                if call.status == CallStatus.DONE:
+                    logger.info("Call %d already done, skipping", call_id)
+                    return
+
+                telegram_user_id: int | None = call.user.telegram_id
+
+                try:
+                    await _run_pipeline(session, call)
+                    await session.commit()
+
+                    logger.info("Call %d processed successfully", call_id)
+                    if notify_fn and telegram_user_id:
+                        await notify_fn(telegram_user_id, True, _success_summary(call))
+
+                except QuotaExhaustedError:
+                    # Do not mark as error — leave in current status so it retries when quota is restored
+                    await session.rollback()
+                    logger.critical("OpenAI quota exhausted — call %d left in queue", call_id)
+                    raise  # propagate to task_queue to pause processing
+
+                except Exception as exc:
+                    await session.rollback()
+                    async with AsyncSessionLocal() as err_session:
+                        err_result = await err_session.execute(select(Call).where(Call.id == call_id))
+                        err_call = err_result.scalar_one_or_none()
+                        if err_call:
+                            await _set_status(
+                                err_session, err_call,
+                                CallStatus.ERROR,
+                                error_message=str(exc)[:1000],
+                            )
+                            await err_session.commit()
+
+                    logger.exception("Call %d failed: %s", call_id, exc)
+                    if notify_fn and telegram_user_id:
+                        await notify_fn(
+                            telegram_user_id, False,
+                            "Не удалось обработать запись. Попробуйте загрузить ещё раз.",
+                        )
         finally:
-            # Release the session-level advisory lock regardless of outcome.
-            # Postgres rejects queries on a connection whose transaction is in aborted
-            # state, so we rollback first to guarantee a clean slate. Failing to release
-            # the lock here is not fatal — asyncpg pools RESET connections on return,
-            # which releases session advisory locks — but explicit release is cleaner
-            # and avoids depending on pool behavior.
+            # Release on the same dedicated connection that acquired it (see docstring).
             try:
-                await session.rollback()
-                await session.execute(
+                await lock_conn.execute(
                     select(func.pg_advisory_unlock(_ADVISORY_LOCK_NAMESPACE, call_id))
                 )
-                await session.commit()
             except Exception:
                 logger.warning("Failed to release advisory lock for call %d", call_id)
 

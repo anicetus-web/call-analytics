@@ -27,6 +27,7 @@ from typing import Any
 
 import httpx
 from aiogram import Bot, Dispatcher, F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -112,19 +113,34 @@ def _comment_keyboard() -> InlineKeyboardMarkup:
     ]])
 
 
+class _FileTooLargeError(Exception):
+    """Raised when Telegram refuses to hand us the file (Bot API caps downloads at 20 MB)."""
+
+
 async def _upload_file(
     file_id: str,
     project_id: int,
     user_id: int,
     comment: str | None,
     original_filename: str,
-) -> int | None:
+) -> tuple[int | None, str | None]:
     """
     Download file from Telegram and upload to local API.
-    Returns call_id on success, None on failure.
+    Returns (call_id, None) on success, (None, user_facing_reason) on failure.
     """
-    # Get file download URL from Telegram
-    file = await bot.get_file(file_id)
+    try:
+        # Get file download URL from Telegram
+        file = await bot.get_file(file_id)
+    except TelegramBadRequest as exc:
+        if "file is too big" in str(exc).lower():
+            # The Bot API (api.telegram.org) refuses to hand over files above 20 MB,
+            # regardless of our own 200 MB upload limit on the API side — a long call
+            # recording routinely exceeds this. Retrying changes nothing, so tell the
+            # manager clearly instead of the generic failure message.
+            raise _FileTooLargeError() from exc
+        logger.exception("Telegram getFile failed for %s", original_filename)
+        return None, "Telegram отклонил файл. Попробуйте ещё раз."
+
     file_path = file.file_path
     download_url = f"https://api.telegram.org/file/bot{settings.TELEGRAM_BOT_TOKEN}/{file_path}"
 
@@ -152,16 +168,36 @@ async def _upload_file(
                 )
 
         if api_response.status_code == 201:
-            return api_response.json()["call_id"]
+            return api_response.json()["call_id"], None
         else:
             logger.error("Upload API error %d: %s", api_response.status_code, api_response.text)
-            return None
+            return None, None
     except Exception:
         logger.exception("Error uploading file %s", original_filename)
-        return None
+        return None, None
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+_TOO_LARGE_MSG = (
+    "❌ Файл слишком большой — Telegram не позволяет боту скачивать файлы "
+    "крупнее 20 МБ. Сожмите запись или разбейте её на части."
+)
+_GENERIC_FAIL_MSG = "❌ Не удалось загрузить файл. Попробуйте ещё раз."
+
+
+async def _upload_and_get_reply(
+    file_id: str, project_id: int, user_id: int, comment: str | None, filename: str,
+) -> str:
+    """Run the upload and return the message to show the manager."""
+    try:
+        call_id, reason = await _upload_file(file_id, project_id, user_id, comment, filename)
+    except _FileTooLargeError:
+        return _TOO_LARGE_MSG
+    if call_id:
+        return f"✅ Звонок #{call_id} принят в обработку!"
+    return reason or _GENERIC_FAIL_MSG
 
 
 def _extract_file_info(message: Message) -> tuple[str, str] | None:
@@ -268,18 +304,14 @@ async def cmd_skip_comment(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     await state.clear()
 
-    call_id = await _upload_file(
+    reply = await _upload_and_get_reply(
         file_id=data["file_id"],
         project_id=data["project_id"],
         user_id=data["user_id"],
         comment=None,
-        original_filename=data["filename"],
+        filename=data["filename"],
     )
-
-    if call_id:
-        await message.answer(f"✅ Звонок #{call_id} принят в обработку!")
-    else:
-        await message.answer("❌ Не удалось загрузить файл. Попробуйте ещё раз.")
+    await message.answer(reply)
 
 
 @router.message(
@@ -293,18 +325,14 @@ async def receive_comment(message: Message, state: FSMContext) -> None:
     await state.clear()
 
     comment = (message.text or "")[:_MAX_COMMENT_LEN]
-    call_id = await _upload_file(
+    reply = await _upload_and_get_reply(
         file_id=data["file_id"],
         project_id=data["project_id"],
         user_id=data["user_id"],
         comment=comment,
-        original_filename=data["filename"],
+        filename=data["filename"],
     )
-
-    if call_id:
-        await message.answer(f"✅ Звонок #{call_id} принят в обработку!")
-    else:
-        await message.answer("❌ Не удалось загрузить файл. Попробуйте ещё раз.")
+    await message.answer(reply)
 
 
 @router.callback_query(F.data == "skip_comment")
@@ -317,18 +345,14 @@ async def cb_skip_comment(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await callback.message.edit_reply_markup(reply_markup=None)
 
-    call_id = await _upload_file(
+    reply = await _upload_and_get_reply(
         file_id=data["file_id"],
         project_id=data["project_id"],
         user_id=data["user_id"],
         comment=None,
-        original_filename=data["filename"],
+        filename=data["filename"],
     )
-
-    if call_id:
-        await callback.message.answer(f"✅ Звонок #{call_id} принят в обработку!")
-    else:
-        await callback.message.answer("❌ Не удалось загрузить файл. Попробуйте ещё раз.")
+    await callback.message.answer(reply)
     await callback.answer()
 
 

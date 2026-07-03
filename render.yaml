@@ -62,5 +62,11 @@ services:
     dockerContext: ./frontend
     plan: free
     envVars:
+      # NOTE: Render Blueprints cannot reference a sibling Docker service's assigned
+      # URL declaratively. This must be the *actual* hostname Render gave the api
+      # service (visible on its dashboard page) — it only differs from
+      # "call-analytics-api.onrender.com" because that name collided with a prior
+      # deploy attempt. If you ever tear down and recreate this Blueprint from
+      # scratch, verify the api service's real URL and update this value manually.
       - key: API_UPSTREAM
         value: "https://call-analytics-api-eos5.onrender.com"

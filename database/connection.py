@@ -3,11 +3,13 @@ from database.base import Base
 from config import settings
 
 # Connection pool sizing:
-# Each process (API + each Celery worker) creates its own engine with its own pool.
+# Each process (each scaled `api` replica, plus the single `worker` process) creates
+# its own engine with its own pool.
 # Peak connections per process = pool_size + max_overflow = 5 + 10 = 15.
 # Formula: (pool_size + max_overflow) * total_processes < max_connections
-# With 1 API + 3 workers = 4 processes: 15 * 4 = 60 < 100 (PG default) — safe.
-# Adjust pool_size in config if adding more workers; keep the formula result < 80
+# With 3 scaled `api` replicas + 1 `worker` = 4 processes: 15 * 4 = 60 < 100 (PG default) — safe.
+# `worker` MUST remain a single instance (in-memory task queue) — see services/task_queue.py.
+# Adjust pool_size in config if scaling `api` further; keep the formula result < 80
 # to leave headroom for admin tools (psql, pgAdmin).
 engine = create_async_engine(
     settings.DATABASE_URL,

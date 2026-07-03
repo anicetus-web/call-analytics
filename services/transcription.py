@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from openai import AsyncOpenAI, APIError, APITimeoutError, RateLimitError
 
 from config import settings
+from services.quota import QuotaExhaustedError
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,8 @@ async def transcribe(audio_path: str) -> TranscriptionResult:
                 )
 
         except RateLimitError as exc:
+            if getattr(exc, "code", None) == "insufficient_quota":
+                raise QuotaExhaustedError("OpenAI quota exhausted") from exc
             last_exc = exc
             if attempt < settings.MAX_RETRY_ATTEMPTS:
                 delay = settings.RETRY_DELAY_SECONDS * (2 ** (attempt - 1))

@@ -145,6 +145,16 @@ class Settings(BaseSettings):
             raise ValueError("LLM_TEMPERATURE must be between 0.0 and 2.0")
         return v
 
+    @field_validator("MAX_RETRY_ATTEMPTS")
+    @classmethod
+    def validate_max_retry_attempts(cls, v: int) -> int:
+        # 0 would silently skip the retry loop body entirely (range(1, 1) is empty),
+        # raising a confusing "failed after 0 attempts: None" instead of ever calling
+        # Whisper/the LLM — fail loudly at startup instead.
+        if v < 1:
+            raise ValueError("MAX_RETRY_ATTEMPTS must be at least 1")
+        return v
+
     @field_validator("JWT_SECRET_KEY", "BOT_SECRET")
     @classmethod
     def reject_placeholder_secrets(cls, v: str, info) -> str:

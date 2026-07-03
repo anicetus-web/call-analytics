@@ -13,7 +13,8 @@ RUN npm run build
 FROM nginx:1.27-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
-# Docker Compose overrides this via API_UPSTREAM=http://api:8000 (see docker-compose.yml).
+# Default matches the docker-compose service name; override via API_UPSTREAM env var
+# when frontend and api are separate hosted services (see render.yaml).
 # The official nginx image runs envsubst on templates/*.template -> conf.d/*.conf at startup.
 ENV API_UPSTREAM=http://api:8000
 EXPOSE 80

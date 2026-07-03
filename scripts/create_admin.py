@@ -7,6 +7,8 @@ Usage (inside the api/worker container, or any environment with DATABASE_URL set
 import asyncio
 import sys
 
+from sqlalchemy.exc import IntegrityError
+
 from database import AsyncSessionLocal, User, UserRole
 from api.auth import hash_password
 
@@ -20,7 +22,12 @@ async def create_admin(login: str, password: str, name: str) -> None:
             role=UserRole.ADMIN,
         )
         db.add(user)
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            print(f"Error: login {login!r} is already taken.")
+            sys.exit(1)
         print(f"Created admin user id={user.id} login={login!r}")
 
 

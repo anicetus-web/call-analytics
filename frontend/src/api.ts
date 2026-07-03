@@ -5,7 +5,11 @@
  * ⚠ SECURITY NOTE:
  * localStorage is readable by any JS running on the page. If an XSS
  * vulnerability exists, an attacker can steal the token. For a production-grade
- * system, migrate to httpOnly cookies. See README.md for details.
+ * system, migrate to httpOnly cookies: have the backend set the JWT via
+ * Set-Cookie (httpOnly, Secure, SameSite=Strict) from /api/auth/token instead
+ * of returning it in the response body, drop the Authorization header
+ * injection below, and switch axios to `withCredentials: true`. Also drop
+ * OAuth2PasswordBearer in api/auth.py in favor of reading the cookie.
  */
 import axios from 'axios'
 

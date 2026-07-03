@@ -31,6 +31,7 @@ export default function CallDetailPage() {
   const [call, setCall] = useState<CallDetail | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [reprocessing, setReprocessing] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -60,6 +61,7 @@ export default function CallDetailPage() {
 
   useEffect(() => {
     setLoading(true)
+    setError(null)
     fetchCall()
       .then((data) => {
         // Start polling if call is still in progress
@@ -67,6 +69,7 @@ export default function CallDetailPage() {
           pollRef.current = setInterval(fetchCall, POLL_INTERVAL_MS)
         }
       })
+      .catch(() => setError('Не удалось загрузить звонок'))
       .finally(() => setLoading(false))
 
     return () => stopPolling()
@@ -82,12 +85,15 @@ export default function CallDetailPage() {
       if (IN_PROGRESS_STATUSES.has(updated.status) && !pollRef.current) {
         pollRef.current = setInterval(fetchCall, POLL_INTERVAL_MS)
       }
+    } catch {
+      alert('Не удалось запустить повторную обработку. Попробуйте ещё раз.')
     } finally {
       setReprocessing(false)
     }
   }
 
   if (loading) return <div className={styles.state}>Загрузка...</div>
+  if (error) return <div className={`${styles.state} ${styles.error}`}>{error}</div>
   if (!call) return <div className={styles.state}>Звонок не найден</div>
 
   const overallScore = call.analysis_results.length > 0

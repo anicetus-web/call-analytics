@@ -77,6 +77,15 @@ export default function ProjectDetailPage() {
 
   const loadProject = useCallback(() => getProject(projectId).then(setProject), [projectId])
 
+  // Used to refresh project data after a mutation in the Settings tab (fire-and-forget
+  // from the caller's perspective). Unlike loadProject() used in the initial-load
+  // Promise.all below, failures here must not become unhandled rejections — if the
+  // refetch fails after a successful save, the panel just keeps showing pre-mutation
+  // data instead of a jarring page-level error.
+  const refreshProject = useCallback(() => {
+    loadProject().catch(() => {})
+  }, [loadProject])
+
   useEffect(() => {
     setLoading(true)
     setError(null)
@@ -231,7 +240,7 @@ export default function ProjectDetailPage() {
       {tab === 'settings' && (
         <SettingsTab
           project={project}
-          onProjectChanged={loadProject}
+          onProjectChanged={refreshProject}
           onArchived={() => navigate('/projects')}
         />
       )}
@@ -328,7 +337,11 @@ function MembersEditor({ project, onChanged }: { project: Project; onChanged: ()
   const [selected, setSelected] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => { getManagers().then(setAllManagers) }, [])
+  useEffect(() => {
+    getManagers()
+      .then(setAllManagers)
+      .catch(() => setError('Не удалось загрузить список менеджеров'))
+  }, [])
 
   const available = allManagers.filter(m => !project.members.some(pm => pm.id === m.id))
 
@@ -396,11 +409,16 @@ function MembersEditor({ project, onChanged }: { project: Project; onChanged: ()
 function MetricGroupsEditor({ projectId }: { projectId: number }) {
   const [groups, setGroups] = useState<MetricGroup[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
 
   function reload() {
     setLoading(true)
-    getMetricGroups(projectId).then(setGroups).finally(() => setLoading(false))
+    setError(null)
+    getMetricGroups(projectId)
+      .then(setGroups)
+      .catch(() => setError('Не удалось загрузить группы метрик'))
+      .finally(() => setLoading(false))
   }
 
   useEffect(reload, [projectId])
@@ -416,6 +434,7 @@ function MetricGroupsEditor({ projectId }: { projectId: number }) {
   }
 
   if (loading) return <div className={styles.state}>Загрузка...</div>
+  if (error) return <div className={`${styles.state} ${styles.error}`}>{error}</div>
 
   return (
     <div>

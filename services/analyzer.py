@@ -23,6 +23,7 @@ from decimal import Decimal
 from openai import AsyncOpenAI, APIError, APITimeoutError, RateLimitError
 
 from config import settings
+from services.quota import QuotaExhaustedError
 
 logger = logging.getLogger(__name__)
 
@@ -40,13 +41,6 @@ VALID_SCORES = {Decimal("0"), Decimal("0.5"), Decimal("1")}
 
 class AnalysisError(Exception):
     """Raised when LLM analysis fails for a metric group after all retries."""
-
-
-class QuotaExhaustedError(Exception):
-    """
-    Raised when the OpenAI account has insufficient quota.
-    Processing should stop — calls stay in the queue with 'uploaded' status.
-    """
 
 
 @dataclass
@@ -88,9 +82,14 @@ def _parse_response(raw: str, items: list) -> list[ItemResult]:
       "1-1-45.2;2-0;3-0.5-120.5"
 
     Unknown positions and invalid scores are silently skipped (logged as warnings).
+    Duplicate positions (the LLM repeating an item number) keep only the first
+    occurrence — AnalysisResult has a unique (call_id, metric_item_id) constraint,
+    so letting both through would crash the whole call's DB insert over one
+    hallucinated duplicate instead of just that group's redundant token.
     """
     position_to_item = {item.position: item for item in items}
     results: list[ItemResult] = []
+    seen_positions: set[int] = set()
 
     for match in _ITEM_PATTERN.finditer(raw):
         position = int(match.group(1))
@@ -104,6 +103,11 @@ def _parse_response(raw: str, items: list) -> list[ItemResult]:
         if score not in VALID_SCORES:
             logger.warning("LLM returned invalid score %s for position %d, skipping", score, position)
             continue
+
+        if position in seen_positions:
+            logger.warning("LLM returned duplicate position %d, keeping first occurrence", position)
+            continue
+        seen_positions.add(position)
 
         timecode: Decimal | None = None
         if timecode_str is not None and score > 0:
@@ -199,22 +203,27 @@ async def analyze_call(
         parsed: list[ItemResult] = []
         error: str | None = None
 
-        # Up to 2 parse retries (LLM returned garbage format)
+        # Up to 2 parse retries (LLM returned garbage format, or scored only some items)
         for parse_attempt in range(1, 3):
             try:
                 raw = await _call_llm(prompt)  # may raise QuotaExhaustedError
                 parsed = _parse_response(raw, active_items)
 
-                if not parsed:
+                if len(parsed) < len(active_items):
                     logger.warning(
-                        "Group %d: LLM response parsed to empty list (attempt %d): %r",
-                        group.id, parse_attempt, raw,
+                        "Group %d: LLM scored %d/%d items (attempt %d): %r",
+                        group.id, len(parsed), len(active_items), parse_attempt, raw,
                     )
                     if parse_attempt == 2:
-                        error = f"LLM returned unparseable response: {raw!r}"
+                        # Keep whatever we did get — better than discarding a mostly-
+                        # complete response — but flag it so has_partial_error surfaces.
+                        error = (
+                            f"LLM scored only {len(parsed)}/{len(active_items)} items "
+                            f"after retry: {raw!r}"
+                        )
                     continue
 
-                break  # success
+                break  # success — every active item was scored
 
             except AnalysisError as exc:
                 error = str(exc)
