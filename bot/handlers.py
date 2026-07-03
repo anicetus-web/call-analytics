@@ -1,21 +1,33 @@
 """
 Telegram bot handlers (aiogram 3.x).
 
-Commands:
-  /start   — welcome message, shows which project the manager is assigned to
-  /status  — show last 5 calls and their statuses
-  /skip    — in WaitingComment state: upload the call without a comment
+Commands (shown in the per-chat menu button, next to the message input):
+  /start           — begin a session: auto-picks the project if the manager
+                      has only one, otherwise asks which one. The chosen
+                      project stays "active" for every file sent afterwards,
+                      so uploads no longer ask "which project?" every time.
+  /switch_project  — re-pick the active project (only shown in the menu when
+                      the manager belongs to more than one project)
+  /finish          — end the session (drops the active project + any
+                      in-progress upload); next file falls back to asking
+  /status          — the last 10 calls and their statuses
+  /skip            — in WaitingComment state: upload the call without a comment
 
-Flow:
+Session state (active_project_id / active_user_id) lives in FSM storage data,
+independent of the FSM *state* field, so it survives the state.clear() that
+happens after each individual upload completes — see _reset_upload_state().
+
+Flow (once a session is active):
   1. Manager sends an audio/video/voice/document message
   2. Bot shows inline keyboard: "Add comment" | "Skip"
   3. Manager picks "Add comment" → enters WaitingComment state
      OR picks "Skip" → file is uploaded immediately without comment
   4. In WaitingComment state: any text message is treated as the comment
 
-Manager ↔ Project mapping: a manager can belong to multiple projects.
-If assigned to exactly one project — that project is used automatically.
-If assigned to multiple — bot asks to choose (simple inline keyboard).
+Manager ↔ Project mapping: a manager can belong to multiple projects. If a
+file arrives with no active session yet (manager never ran /start), the bot
+falls back to the old per-upload behavior: auto-pick if there's only one
+project, otherwise ask — and that answer becomes the active session too.
 
 All API calls go through httpx to the local FastAPI server.
 """
@@ -35,7 +47,7 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import (
-    CallbackQuery, InlineKeyboardButton,
+    BotCommand, BotCommandScopeChat, CallbackQuery, InlineKeyboardButton,
     InlineKeyboardMarkup, Message, Video,
 )
 
@@ -108,12 +120,39 @@ async def _fetch_manager_projects(telegram_id: int) -> list[dict[str, Any]] | No
         return None
 
 
-def _projects_keyboard(projects: list[dict[str, Any]]) -> InlineKeyboardMarkup:
+def _projects_keyboard(projects: list[dict[str, Any]], mode: str) -> InlineKeyboardMarkup:
+    """mode is "session" (picking the active project via /start or /switch_project)
+    or "upload" (picking which project a specific pending file belongs to) —
+    encoded in callback_data so cb_select_project knows how to react."""
     buttons = [
-        [InlineKeyboardButton(text=p["name"], callback_data=f"project:{p['id']}")]
+        [InlineKeyboardButton(text=p["name"], callback_data=f"project:{mode}:{p['id']}")]
         for p in projects
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+async def _sync_commands(chat_id: int, projects: list[dict[str, Any]]) -> None:
+    """Set the per-chat command menu (the button left of the message input).
+    /switch_project only appears for managers who actually have >1 project."""
+    commands = [BotCommand(command="start", description="Начать сессию")]
+    if len(projects) > 1:
+        commands.append(BotCommand(command="switch_project", description="Сменить проект"))
+    commands.append(BotCommand(command="finish", description="Закончить сессию"))
+    commands.append(BotCommand(command="status", description="Последние 10 звонков"))
+    try:
+        await bot.set_my_commands(commands, scope=BotCommandScopeChat(chat_id=chat_id))
+    except Exception:
+        logger.exception("Failed to set per-chat commands for chat_id=%d", chat_id)
+
+
+async def _reset_upload_state(state: FSMContext) -> None:
+    """Clear the per-upload FSM state (file_id/filename/project_id/user_id) after
+    a call is uploaded, while preserving the ongoing session's active project —
+    plain state.clear() would wipe that too and force a re-pick on every file."""
+    data = await state.get_data()
+    preserved = {k: v for k, v in data.items() if k in ("active_project_id", "active_user_id")}
+    await state.set_state(None)
+    await state.set_data(preserved)
 
 
 def _comment_keyboard() -> InlineKeyboardMarkup:
@@ -243,7 +282,7 @@ def _extract_file_info(message: Message) -> tuple[str, str] | None:
 # ── Handlers ──────────────────────────────────────────────────────────────────
 
 @router.message(Command("start"))
-async def cmd_start(message: Message) -> None:
+async def cmd_start(message: Message, state: FSMContext) -> None:
     telegram_id = message.from_user.id if message.from_user else None
     if telegram_id is None:
         return
@@ -256,16 +295,55 @@ async def cmd_start(message: Message) -> None:
         await message.answer(_NOT_IN_PROJECT_MSG)
         return
 
-    names = "\n".join(f"• {_esc(p['name'])}" for p in projects)
-    await message.answer(
-        "🎙 <b>Call Analytics</b>\n\n"
-        "Присылайте мне записи звонков — я передаю их на транскрибацию "
-        "и AI-оценку по критериям вашего проекта.\n\n"
-        f"<b>Ваши проекты:</b>\n{names}\n\n"
-        "━━━━━━━━━━━━━━━\n"
-        "📎 Отправьте аудио или видеофайл со звонком\n"
-        "📋 /status — статус последних звонков"
+    await _sync_commands(message.chat.id, projects)
+
+    if len(projects) == 1:
+        project = projects[0]
+        await state.update_data(active_project_id=project["id"], active_user_id=project["user_id"])
+        await message.answer(
+            "🎙 <b>Call Analytics</b>\n\n"
+            f"✅ Сессия начата. Проект: <b>{_esc(project['name'])}</b>\n\n"
+            "━━━━━━━━━━━━━━━\n"
+            "📎 Отправьте аудио или видеофайл со звонком\n"
+            "📋 /status — последние 10 звонков\n"
+            "🏁 /finish — закончить сессию"
+        )
+    else:
+        await message.answer(
+            "🎙 <b>Call Analytics</b>\n\n"
+            "У вас несколько проектов — выберите, с каким работаем сейчас:",
+            reply_markup=_projects_keyboard(projects, mode="session"),
+        )
+
+
+@router.message(Command("switch_project"))
+async def cmd_switch_project(message: Message) -> None:
+    telegram_id = message.from_user.id if message.from_user else None
+    if telegram_id is None:
+        return
+
+    projects = await _fetch_manager_projects(telegram_id)
+    if projects is None:
+        await message.answer(_SERVICE_UNAVAILABLE_MSG)
+        return
+    if len(projects) < 2:
+        await message.answer("У вас только один проект — переключаться не на что.")
+        return
+
+    await message.answer("📂 Выберите проект:", reply_markup=_projects_keyboard(projects, mode="session"))
+
+
+@router.message(Command("finish"))
+async def cmd_finish(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await bot.set_my_commands(
+        [BotCommand(command="start", description="Начать сессию")],
+        scope=BotCommandScopeChat(chat_id=message.chat.id),
     )
+    await message.answer("🏁 <b>Сессия завершена</b>\n\nОтправьте /start, когда будете готовы продолжить.")
+
+
+_STATUS_LIMIT = 10
 
 
 @router.message(Command("status"))
@@ -291,7 +369,7 @@ async def cmd_status(message: Message) -> None:
                 select(Call)
                 .where(Call.user_id == user.id)
                 .order_by(Call.created_at.desc())
-                .limit(5)
+                .limit(_STATUS_LIMIT)
             )
             calls = calls_result.scalars().all()
     except Exception:
@@ -327,14 +405,16 @@ async def cmd_status(message: Message) -> None:
         name = _esc(call.original_filename or f"звонок #{call.id}")
         lines.append(f"{emoji} <code>{date_str}</code> — {name}\n    <i>{label}</i>")
 
-    await message.answer("📋 <b>Последние 5 звонков</b>\n━━━━━━━━━━━━━━━\n" + "\n".join(lines))
+    await message.answer(
+        f"📋 <b>Последние {len(calls)} звонков</b>\n━━━━━━━━━━━━━━━\n" + "\n".join(lines)
+    )
 
 
 @router.message(Command("skip"), StateFilter(UploadFlow.waiting_comment))
 async def cmd_skip_comment(message: Message, state: FSMContext) -> None:
     """Manager sends /skip instead of a comment."""
     data = await state.get_data()
-    await state.clear()
+    await _reset_upload_state(state)
 
     reply = await _upload_and_get_reply(
         file_id=data["file_id"],
@@ -354,7 +434,7 @@ async def cmd_skip_comment(message: Message, state: FSMContext) -> None:
 async def receive_comment(message: Message, state: FSMContext) -> None:
     """Manager sent a text comment while in WaitingComment state."""
     data = await state.get_data()
-    await state.clear()
+    await _reset_upload_state(state)
 
     comment = (message.text or "")[:_MAX_COMMENT_LEN]
     reply = await _upload_and_get_reply(
@@ -371,10 +451,10 @@ async def receive_comment(message: Message, state: FSMContext) -> None:
 async def cb_skip_comment(callback: CallbackQuery, state: FSMContext) -> None:
     if callback.message is None:
         await callback.answer("Сообщение недоступно, отправьте файл заново.", show_alert=True)
-        await state.clear()
+        await _reset_upload_state(state)
         return
     data = await state.get_data()
-    await state.clear()
+    await _reset_upload_state(state)
     await callback.message.edit_reply_markup(reply_markup=None)
 
     reply = await _upload_and_get_reply(
@@ -392,7 +472,7 @@ async def cb_skip_comment(callback: CallbackQuery, state: FSMContext) -> None:
 async def cb_add_comment(callback: CallbackQuery, state: FSMContext) -> None:
     if callback.message is None:
         await callback.answer("Сообщение недоступно, отправьте файл заново.", show_alert=True)
-        await state.clear()
+        await _reset_upload_state(state)
         return
     await callback.message.edit_reply_markup(reply_markup=None)
     await callback.message.answer("✍️ Напишите комментарий к звонку:")
@@ -402,43 +482,56 @@ async def cb_add_comment(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data.startswith("project:"))
 async def cb_select_project(callback: CallbackQuery, state: FSMContext) -> None:
-    """Manager selected a project when they belong to multiple."""
+    """Manager picked a project — either to start/switch their session (mode
+    "session", from /start or /switch_project) or to answer "which project is
+    this file for" (mode "upload", from receive_file when no session was active
+    yet). callback_data is "project:<mode>:<id>"."""
     if callback.message is None or callback.data is None:
         await callback.answer("Сообщение недоступно, отправьте файл заново.", show_alert=True)
-        await state.clear()
-        return
-    project_id = int(callback.data.split(":")[1])
-    data = await state.get_data()
-
-    # Guard: file_id is lost if the bot restarted between message and callback press
-    if not data.get("file_id"):
-        await callback.message.edit_reply_markup(reply_markup=None)
-        await callback.message.answer(_SESSION_EXPIRED_MSG)
-        await state.clear()
-        await callback.answer()
+        await _reset_upload_state(state)
         return
 
-    await callback.message.edit_reply_markup(reply_markup=None)
+    _, mode, project_id_str = callback.data.split(":")
+    project_id = int(project_id_str)
 
     telegram_id = callback.from_user.id
     projects = await _fetch_manager_projects(telegram_id)
     if projects is None:
         await callback.message.answer(_SERVICE_UNAVAILABLE_MSG)
-        await state.clear()
         await callback.answer()
         return
-    user_id = next((p["user_id"] for p in projects if p["id"] == project_id), None)
-    if user_id is None:
+    project = next((p for p in projects if p["id"] == project_id), None)
+    if project is None:
         await callback.message.answer("⚠️ Проект не найден.")
-        await state.clear()
         await callback.answer()
         return
 
-    await state.update_data(project_id=project_id, user_id=user_id)
-    await callback.message.answer(
-        "💬 Хотите добавить комментарий к звонку?",
-        reply_markup=_comment_keyboard(),
-    )
+    await callback.message.edit_reply_markup(reply_markup=None)
+
+    if mode == "upload":
+        # Guard: file_id is lost if the bot restarted between message and callback press
+        data = await state.get_data()
+        if not data.get("file_id"):
+            await callback.message.answer(_SESSION_EXPIRED_MSG)
+            await _reset_upload_state(state)
+            await callback.answer()
+            return
+        await state.update_data(
+            project_id=project_id, user_id=project["user_id"],
+            active_project_id=project_id, active_user_id=project["user_id"],
+        )
+        await callback.message.answer(
+            "💬 Хотите добавить комментарий к звонку?",
+            reply_markup=_comment_keyboard(),
+        )
+    else:  # mode == "session"
+        await state.update_data(active_project_id=project_id, active_user_id=project["user_id"])
+        await callback.message.answer(
+            f"✅ <b>Сессия начата</b>\nПроект: {_esc(project['name'])}\n\n"
+            "Отправляйте записи звонков — выбирать проект каждый раз больше не нужно."
+        )
+        await _sync_commands(callback.message.chat.id, projects)
+
     await callback.answer()
 
 
@@ -462,6 +555,22 @@ async def receive_file(message: Message, state: FSMContext) -> None:
 
     file_id, filename = file_info
 
+    # An active session (started via /start or /switch_project) already knows
+    # the project — skip straight to the comment step, no need to ask again.
+    session_data = await state.get_data()
+    active_project_id = session_data.get("active_project_id")
+    active_user_id = session_data.get("active_user_id")
+    if active_project_id and active_user_id:
+        await state.update_data(
+            file_id=file_id, filename=filename,
+            project_id=active_project_id, user_id=active_user_id,
+        )
+        await message.answer(
+            "📎 <b>Файл получен</b>\n\nХотите добавить комментарий?",
+            reply_markup=_comment_keyboard(),
+        )
+        return
+
     projects = await _fetch_manager_projects(telegram_id)
     if projects is None:
         await message.answer(_SERVICE_UNAVAILABLE_MSG)
@@ -471,21 +580,25 @@ async def receive_file(message: Message, state: FSMContext) -> None:
         return
 
     if len(projects) == 1:
+        # No /start yet, but there's only one possible project — adopt it as
+        # the session too, so the next file skips this branch entirely.
         project = projects[0]
         await state.update_data(
             file_id=file_id,
             filename=filename,
             project_id=project["id"],
             user_id=project["user_id"],
+            active_project_id=project["id"],
+            active_user_id=project["user_id"],
         )
         await message.answer(
             "📎 <b>Файл получен</b>\n\nХотите добавить комментарий?",
             reply_markup=_comment_keyboard(),
         )
     else:
-        # Multiple projects — ask which one
+        # Multiple projects and no active session — ask which one this file is for.
         await state.update_data(file_id=file_id, filename=filename)
         await message.answer(
             "📂 <b>К какому проекту относится этот звонок?</b>",
-            reply_markup=_projects_keyboard(projects),
+            reply_markup=_projects_keyboard(projects, mode="upload"),
         )
