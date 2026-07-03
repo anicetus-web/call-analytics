@@ -443,5 +443,4 @@
 @media (max-width: 1100px) {
   .tiles { grid-template-columns: repeat(2, 1fr); }
   .grid { grid-template-columns: 1fr; }
-  .skillsRow { grid-template-columns: 1fr; }
 }
