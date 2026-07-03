@@ -1,13 +1,12 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   getAnalyticsOverview, getCallsTimeline, getDurationBuckets, getHeatmap, getGlobalManagerSummary,
   getProjects, AnalyticsOverview, CallsTimelinePoint, DurationBucket, HeatmapCell, ManagerSummary, Project,
 } from '../api'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { IconPhoneWave, IconClock, IconTarget, IconTrend } from '../components/icons'
+import Heatmap from '../components/Heatmap'
 import styles from './AnalyticsPage.module.css'
-
-const WEEKDAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
 function fmtDuration(sec: number): string {
   if (!sec) return '0:00'
@@ -80,17 +79,6 @@ export default function AnalyticsPage() {
   }, [projectId, dateFrom, dateTo])
 
   useEffect(() => { load() }, [load])
-
-  const heatmapMap = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const cell of heatmap) map.set(`${cell.weekday}-${cell.hour}`, cell.call_count)
-    return map
-  }, [heatmap])
-
-  const heatmapMax = useMemo(
-    () => heatmap.reduce((max, c) => Math.max(max, c.call_count), 0),
-    [heatmap]
-  )
 
   return (
     <div>
@@ -187,31 +175,7 @@ export default function AnalyticsPage() {
               {heatmap.length === 0 ? (
                 <div className={styles.empty}>Нет данных за выбранный период</div>
               ) : (
-                <div className={styles.heatmap}>
-                  <div className={styles.heatmapRow}>
-                    <span className={styles.heatmapCorner} />
-                    {Array.from({ length: 24 }, (_, h) => (
-                      <span key={h} className={styles.heatmapHourLabel}>{h % 3 === 0 ? h : ''}</span>
-                    ))}
-                  </div>
-                  {WEEKDAY_LABELS.map((label, weekday) => (
-                    <div key={weekday} className={styles.heatmapRow}>
-                      <span className={styles.heatmapDayLabel}>{label}</span>
-                      {Array.from({ length: 24 }, (_, hour) => {
-                        const count = heatmapMap.get(`${weekday}-${hour}`) ?? 0
-                        const intensity = heatmapMax > 0 ? count / heatmapMax : 0
-                        return (
-                          <span
-                            key={hour}
-                            className={styles.heatmapCell}
-                            style={{ background: intensity > 0 ? `rgba(236,72,153,${0.12 + intensity * 0.75})` : undefined }}
-                            title={`${label}, ${hour}:00 — ${count} зв.`}
-                          />
-                        )
-                      })}
-                    </div>
-                  ))}
-                </div>
+                <Heatmap cells={heatmap} />
               )}
             </div>
 

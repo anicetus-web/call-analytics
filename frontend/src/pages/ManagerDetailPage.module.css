@@ -187,40 +187,6 @@
   white-space: nowrap;
 }
 
-.heatmap {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  overflow-x: auto;
-}
-
-.heatmapRow {
-  display: grid;
-  grid-template-columns: 28px repeat(24, 1fr);
-  gap: 3px;
-  align-items: center;
-}
-
-.heatmapCorner { width: 28px; }
-
-.heatmapHourLabel {
-  font-size: 9px;
-  color: var(--text-faint);
-  text-align: center;
-}
-
-.heatmapDayLabel {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.heatmapCell {
-  aspect-ratio: 1;
-  min-width: 10px;
-  border-radius: 3px;
-  background: var(--bg-hover);
-}
-
 .callsList {
   display: flex;
   flex-direction: column;

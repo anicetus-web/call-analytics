@@ -7,9 +7,9 @@ import {
 } from '../api'
 import { IconPhoneWave, IconClock, IconTarget, IconTrend } from '../components/icons'
 import Avatar from '../components/Avatar'
+import Heatmap from '../components/Heatmap'
 import styles from './ManagerDetailPage.module.css'
 
-const WEEKDAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 const ACTIVITY_WINDOW_DAYS = 30
 
 const STATUS_LABELS: Record<string, string> = {
@@ -123,13 +123,6 @@ export default function ManagerDetailPage() {
   }, [activeDatesSet])
 
   const missedDaysCount = activityStrip.filter(d => !d.active).length
-
-  const heatmapMap = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const cell of heatmap) map.set(`${cell.weekday}-${cell.hour}`, cell.call_count)
-    return map
-  }, [heatmap])
-  const heatmapMax = useMemo(() => heatmap.reduce((max, c) => Math.max(max, c.call_count), 0), [heatmap])
 
   if (!managerLoaded) return <div className={styles.state}>Загрузка...</div>
   if (managerError) return <div className={`${styles.state} ${styles.error}`}>{managerError}</div>
@@ -248,31 +241,7 @@ export default function ManagerDetailPage() {
               {heatmap.length === 0 ? (
                 <div className={styles.empty}>Нет данных за этот период</div>
               ) : (
-                <div className={styles.heatmap}>
-                  <div className={styles.heatmapRow}>
-                    <span className={styles.heatmapCorner} />
-                    {Array.from({ length: 24 }, (_, h) => (
-                      <span key={h} className={styles.heatmapHourLabel}>{h % 3 === 0 ? h : ''}</span>
-                    ))}
-                  </div>
-                  {WEEKDAY_LABELS.map((label, weekday) => (
-                    <div key={weekday} className={styles.heatmapRow}>
-                      <span className={styles.heatmapDayLabel}>{label}</span>
-                      {Array.from({ length: 24 }, (_, hour) => {
-                        const count = heatmapMap.get(`${weekday}-${hour}`) ?? 0
-                        const intensity = heatmapMax > 0 ? count / heatmapMax : 0
-                        return (
-                          <span
-                            key={hour}
-                            className={styles.heatmapCell}
-                            style={{ background: intensity > 0 ? `rgba(236,72,153,${0.12 + intensity * 0.75})` : undefined }}
-                            title={`${label}, ${hour}:00 — ${count} зв.`}
-                          />
-                        )
-                      })}
-                    </div>
-                  ))}
-                </div>
+                <Heatmap cells={heatmap} />
               )}
             </div>
 
