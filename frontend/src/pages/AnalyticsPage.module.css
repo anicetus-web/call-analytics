@@ -474,6 +474,10 @@
   text-align: right;
 }
 
+.durationChartWrap {
+  margin-top: 16px;
+}
+
 @media (max-width: 1300px) {
   .grid { grid-template-columns: repeat(2, 1fr); }
 }

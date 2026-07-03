@@ -51,6 +51,7 @@ export default function AnalyticsPage() {
   const [keywords, setKeywords] = useState<KeywordItem[]>([])
   const [skills, setSkills] = useState<MetricSummary[]>([])
   const [buckets, setBuckets] = useState<DurationBucket[]>([])
+  const [activeBucket, setActiveBucket] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -408,15 +409,41 @@ export default function AnalyticsPage() {
               {buckets.every(b => b.call_count === 0) ? (
                 <div className={styles.empty}>Нет данных за выбранный период</div>
               ) : (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={buckets} barCategoryGap="45%">
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} stroke="var(--border)" />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} stroke="var(--border)" width={28} />
-                    <Tooltip {...chartTooltipStyle} />
-                    <Bar dataKey="call_count" name="Звонков" fill="#6366f1" radius={[3, 3, 0, 0]} maxBarSize={22} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className={styles.durationChartWrap}>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={buckets} barCategoryGap="45%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} stroke="var(--border)" />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} stroke="var(--border)" width={28} />
+                      <Tooltip {...chartTooltipStyle} cursor={false} />
+                      <Bar
+                        dataKey="call_count"
+                        name="Звонков"
+                        radius={[3, 3, 0, 0]}
+                        maxBarSize={22}
+                        onMouseEnter={(_, idx) => setActiveBucket(idx)}
+                        onMouseLeave={() => setActiveBucket(null)}
+                      >
+                        {buckets.map((b, i) => (
+                          <Cell
+                            key={b.label}
+                            fill="#6366f1"
+                            style={{
+                              filter: activeBucket === i
+                                ? 'brightness(1.4) drop-shadow(0 0 6px rgba(99,102,241,0.7))'
+                                : 'none',
+                              transform: activeBucket === i ? 'scaleY(1.04)' : 'scaleY(1)',
+                              transformOrigin: 'bottom center',
+                              transformBox: 'fill-box',
+                              transition: 'transform 0.15s ease, filter 0.15s ease',
+                              cursor: 'pointer',
+                            }}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </div>
           </div>

@@ -34,6 +34,18 @@ function AnimatedActiveDot({ cx, cy }: { cx?: number; cy?: number }) {
   )
 }
 
+// Same fix for the Tooltip's vertical cursor line — Recharts' default
+// cursor also snaps instantly between days instead of gliding.
+function AnimatedCursor({ points, height }: { points?: { x: number }[]; height?: number }) {
+  if (!points || points.length === 0 || height == null) return null
+  const { x } = points[0]
+  return (
+    <g style={{ transform: `translate(${x}px, 0px)`, transition: 'transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1)' }}>
+      <line y1={0} y2={height} stroke="var(--border)" strokeWidth={1} strokeDasharray="3 3" />
+    </g>
+  )
+}
+
 const GRADIENTS = [
   'linear-gradient(135deg, rgba(236,72,153,0.35), rgba(139,92,246,0.25))',
   'linear-gradient(135deg, rgba(99,102,241,0.35), rgba(6,182,212,0.25))',
@@ -207,6 +219,7 @@ export default function ProjectsPage() {
                   color: 'var(--text)',
                 }}
                 labelStyle={{ color: 'var(--text-muted)' }}
+                cursor={<AnimatedCursor />}
               />
               <Area
                 type="monotone"
