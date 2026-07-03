@@ -20,6 +20,20 @@ function fmtShortDate(iso: string): string {
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+// Recharts' default activeDot teleports instantly from point to point on
+// hover — no interpolation. Wrapping it in a <g> and animating `transform`
+// (not cx/cy, which don't transition reliably across browsers) gives it a
+// smooth glide between days instead of the "деревянно" instant jump.
+function AnimatedActiveDot({ cx, cy }: { cx?: number; cy?: number }) {
+  if (cx == null || cy == null) return null
+  return (
+    <g style={{ transform: `translate(${cx}px, ${cy}px)`, transition: 'transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1)' }}>
+      <circle r={7} fill="#ec4899" opacity={0.18} />
+      <circle r={4.5} fill="#ec4899" stroke="var(--bg-card)" strokeWidth={2} />
+    </g>
+  )
+}
+
 const GRADIENTS = [
   'linear-gradient(135deg, rgba(236,72,153,0.35), rgba(139,92,246,0.25))',
   'linear-gradient(135deg, rgba(99,102,241,0.35), rgba(6,182,212,0.25))',
@@ -112,52 +126,6 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {trend.some(t => t.call_count > 0) && (
-        <div className={styles.trendCard}>
-          <div className={styles.trendHeader}>
-            <span className={styles.trendTitle}>Звонки за последние 30 дней</span>
-          </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={trend} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
-              <defs>
-                <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#ec4899" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="#6366f1" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis
-                dataKey="date"
-                tickFormatter={fmtShortDate}
-                tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
-                stroke="var(--border)"
-                interval="preserveStartEnd"
-              />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} stroke="var(--border)" />
-              <Tooltip
-                labelFormatter={fmtShortDate}
-                formatter={(v: number) => [`${v}`, 'Звонков']}
-                contentStyle={{
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  color: 'var(--text)',
-                }}
-                labelStyle={{ color: 'var(--text-muted)' }}
-              />
-              <Area
-                type="monotone"
-                dataKey="call_count"
-                stroke="#ec4899"
-                strokeWidth={2.5}
-                fill="url(#trendFill)"
-                activeDot={{ r: 5, fill: '#ec4899', stroke: 'var(--bg-card)', strokeWidth: 2 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
       {projects.length === 0 ? (
         <div className={styles.empty}>Нет активных проектов</div>
       ) : filtered.length === 0 ? (
@@ -204,6 +172,52 @@ export default function ProjectsPage() {
             <IconPlus size={22} />
             <span>Создать новый проект</span>
           </button>
+        </div>
+      )}
+
+      {trend.some(t => t.call_count > 0) && (
+        <div className={styles.trendCard}>
+          <div className={styles.trendHeader}>
+            <span className={styles.trendTitle}>Звонки за последние 30 дней</span>
+          </div>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={trend} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+              <defs>
+                <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ec4899" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#6366f1" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickFormatter={fmtShortDate}
+                tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+                stroke="var(--border)"
+                interval="preserveStartEnd"
+              />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} stroke="var(--border)" />
+              <Tooltip
+                labelFormatter={fmtShortDate}
+                formatter={(v: number) => [`${v}`, 'Звонков']}
+                contentStyle={{
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  color: 'var(--text)',
+                }}
+                labelStyle={{ color: 'var(--text-muted)' }}
+              />
+              <Area
+                type="monotone"
+                dataKey="call_count"
+                stroke="#ec4899"
+                strokeWidth={2.5}
+                fill="url(#trendFill)"
+                activeDot={<AnimatedActiveDot />}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       )}
 
