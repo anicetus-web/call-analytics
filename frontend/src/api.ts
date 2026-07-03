@@ -46,6 +46,15 @@ export async function login(username: string, password: string): Promise<void> {
   localStorage.setItem('token', data.access_token)
 }
 
+export interface CurrentUser {
+  id: number
+  name: string
+  login: string | null
+}
+
+export const getMe = () =>
+  api.get<CurrentUser>('/auth/me').then(r => r.data)
+
 export function logout(): void {
   localStorage.removeItem('token')
   window.location.href = '/login'

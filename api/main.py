@@ -79,10 +79,13 @@ def create_app() -> FastAPI:
     # but it exposes only /health, so accidentally hitting the worker port can't
     # bypass the dedicated API instance or duplicate routes.
     if settings.RUN_API:
-        from fastapi import Depends
+        from fastapi import Depends, HTTPException
         from fastapi.security import OAuth2PasswordRequestForm
-        from database import get_db
+        from pydantic import BaseModel
+        from sqlalchemy import select
+        from database import get_db, User
         from sqlalchemy.ext.asyncio import AsyncSession
+        from api.auth import require_admin, TokenData
 
         @app.post("/api/auth/token", response_model=TokenResponse, tags=["auth"])
         async def login(
@@ -90,6 +93,22 @@ def create_app() -> FastAPI:
             db: AsyncSession = Depends(get_db),
         ) -> TokenResponse:
             return await authenticate_admin(form, db)
+
+        class CurrentUserOut(BaseModel):
+            id: int
+            name: str
+            login: str | None
+
+        @app.get("/api/auth/me", response_model=CurrentUserOut, tags=["auth"])
+        async def me(
+            current: TokenData = Depends(require_admin),
+            db: AsyncSession = Depends(get_db),
+        ) -> CurrentUserOut:
+            result = await db.execute(select(User).where(User.id == current.user_id))
+            user = result.scalar_one_or_none()
+            if user is None:
+                raise HTTPException(status_code=404, detail="User not found")
+            return CurrentUserOut(id=user.id, name=user.name, login=user.login)
 
         app.include_router(users_router)
         app.include_router(projects_router)

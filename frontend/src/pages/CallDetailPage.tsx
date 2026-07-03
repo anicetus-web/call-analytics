@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useLocation, Link } from 'react-router-dom'
 import { getCall, getAudioUrl, reprocessCall, CallDetail } from '../api'
 import styles from './CallDetailPage.module.css'
 
@@ -27,6 +27,8 @@ function scoreLabel(score: number): string {
 export default function CallDetailPage() {
   const { id } = useParams<{ id: string }>()
   const callId = Number(id)
+  const location = useLocation()
+  const fromCallsList = (location.state as { from?: string } | null)?.from === 'calls'
 
   const [call, setCall] = useState<CallDetail | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
@@ -102,9 +104,11 @@ export default function CallDetailPage() {
 
   return (
     <div>
-      <Link to={`/projects/${call.project_id}`} className={styles.back}>
-        ← Назад к проекту
-      </Link>
+      {fromCallsList ? (
+        <Link to="/calls" className={styles.back}>← Назад к звонкам</Link>
+      ) : (
+        <Link to={`/projects/${call.project_id}`} className={styles.back}>← Назад к проекту</Link>
+      )}
 
       <div className={styles.header}>
         <div>

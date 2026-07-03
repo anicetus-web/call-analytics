@@ -1,7 +1,8 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -10,14 +11,15 @@
 }
 
 .card {
-  background: #fff;
-  border-radius: 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 28px;
   width: 100%;
   max-width: 440px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
 }
 
 .header {
@@ -30,6 +32,7 @@
 .title {
   font-size: 18px;
   font-weight: 700;
+  color: var(--text);
 }
 
 .closeBtn {
@@ -37,8 +40,8 @@
   border: none;
   font-size: 22px;
   line-height: 1;
-  color: #999;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 0 4px;
 }
-.closeBtn:hover { color: #333; }
+.closeBtn:hover { color: var(--text); }

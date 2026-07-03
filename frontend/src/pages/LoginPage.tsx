@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login } from '../api'
+import { LogoMark } from '../components/icons'
 import styles from './LoginPage.module.css'
 
 export default function LoginPage() {
@@ -31,7 +32,8 @@ export default function LoginPage() {
   return (
     <div className={styles.root}>
       <form className={styles.card} onSubmit={handleSubmit}>
-        <h1 className={styles.title}>📞 Call Analytics</h1>
+        <div className={styles.logo}><LogoMark size={26} /></div>
+        <h1 className={styles.title}>Call Analytics</h1>
         <p className={styles.subtitle}>Вход в систему</p>
 
         {error && <div className={styles.error}>{error}</div>}

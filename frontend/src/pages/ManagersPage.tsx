@@ -1,6 +1,7 @@
 import { useEffect, useState, FormEvent } from 'react'
 import { getManagers, createManager, updateManager, deleteManager, Manager } from '../api'
 import Modal from '../components/Modal'
+import Avatar from '../components/Avatar'
 import styles from './ManagersPage.module.css'
 import formStyles from '../components/Form.module.css'
 
@@ -49,11 +50,14 @@ export default function ManagersPage() {
         <div className={styles.list}>
           {managers.map(m => (
             <div key={m.id} className={styles.row}>
-              <div>
-                <div className={styles.name}>{m.name}</div>
-                <div className={styles.meta}>
-                  Telegram ID: {m.telegram_id ?? '—'}
-                  {m.login && <> · логин: {m.login}</>}
+              <div className={styles.rowLeft}>
+                <Avatar name={m.name} size={36} />
+                <div>
+                  <div className={styles.name}>{m.name}</div>
+                  <div className={styles.meta}>
+                    Telegram ID: {m.telegram_id ?? '—'}
+                    {m.login && <> · логин: {m.login}</>}
+                  </div>
                 </div>
               </div>
               <div className={styles.rowActions}>

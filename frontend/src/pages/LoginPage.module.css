@@ -3,14 +3,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f5f6fa;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(236,72,153,0.12), transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(99,102,241,0.12), transparent 45%),
+    var(--bg);
 }
 
 .card {
-  background: #fff;
-  border-radius: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 18px;
   padding: 40px 48px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
   width: 100%;
   max-width: 400px;
   display: flex;
@@ -18,22 +22,36 @@
   gap: 16px;
 }
 
+.logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, var(--accent-pink), var(--accent-blue));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  margin: 0 auto 4px;
+}
+
 .title {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
+  color: var(--text);
   text-align: center;
 }
 
 .subtitle {
-  color: #888;
+  color: var(--text-muted);
   text-align: center;
   font-size: 14px;
   margin-top: -8px;
 }
 
 .error {
-  background: #ffeaea;
-  color: #c0392b;
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #f87171;
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 14px;
@@ -45,21 +63,23 @@
   gap: 6px;
   font-size: 13px;
   font-weight: 500;
-  color: #444;
+  color: var(--text-muted);
 }
 
 .input {
-  border: 1.5px solid #e0e0e0;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 14px;
+  color: var(--text);
   outline: none;
   transition: border-color 0.15s;
 }
-.input:focus { border-color: #3498db; }
+.input:focus { border-color: var(--accent-pink); }
 
 .btn {
-  background: #1a1a2e;
+  background: linear-gradient(135deg, var(--accent-pink), var(--accent-blue));
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -69,5 +89,5 @@
   margin-top: 8px;
   transition: opacity 0.15s;
 }
-.btn:hover:not(:disabled) { opacity: 0.85; }
+.btn:hover:not(:disabled) { opacity: 0.88; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }

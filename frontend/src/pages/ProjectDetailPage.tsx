@@ -10,6 +10,7 @@ import {
 } from '../api'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Modal from '../components/Modal'
+import Avatar from '../components/Avatar'
 import styles from './ProjectDetailPage.module.css'
 import formStyles from '../components/Form.module.css'
 
@@ -26,11 +27,11 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   uploaded: '#95a5a6',
-  converting: '#3498db',
-  transcribing: '#9b59b6',
-  analyzing: '#e67e22',
-  done: '#27ae60',
-  error: '#e74c3c',
+  converting: '#6366f1',
+  transcribing: '#8b5cf6',
+  analyzing: '#f59e0b',
+  done: '#10b981',
+  error: '#ef4444',
 }
 
 const GROUP_TYPE_LABELS: Record<MetricGroupType, string> = {
@@ -180,10 +181,19 @@ export default function ProjectDetailPage() {
               <h2 className={styles.sectionTitle}>Средний балл по дням</h2>
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={timeline}>
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis domain={[0, 1]} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
-                  <Line type="monotone" dataKey="avg_score" stroke="#3498db" strokeWidth={2} dot={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} stroke="var(--border)" />
+                  <YAxis domain={[0, 1]} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} stroke="var(--border)" />
+                  <Tooltip
+                    formatter={(v: number) => `${(v * 100).toFixed(0)}%`}
+                    contentStyle={{
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      color: 'var(--text)',
+                    }}
+                    labelStyle={{ color: 'var(--text-muted)' }}
+                  />
+                  <Line type="monotone" dataKey="avg_score" stroke="#ec4899" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -376,7 +386,10 @@ function MembersEditor({ project, onChanged }: { project: Project; onChanged: ()
         <div className={styles.memberList}>
           {project.members.map(m => (
             <div key={m.id} className={styles.memberRow}>
-              <span>{m.name}</span>
+              <span className={styles.memberInfo}>
+                <Avatar name={m.name} size={26} />
+                {m.name}
+              </span>
               <button className={formStyles.btnLink} onClick={() => handleRemove(m.id)}>Убрать</button>
             </div>
           ))}
@@ -558,7 +571,7 @@ function MetricGroupCard({
   )
 }
 
-function CreateGroupModal({
+export function CreateGroupModal({
   projectId, onClose, onCreated,
 }: { projectId: number; onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState('')
