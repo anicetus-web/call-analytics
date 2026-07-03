@@ -26,14 +26,14 @@ export default function Layout() {
           <NavLink to="/projects" className={({ isActive }) => isActive ? styles.active : ''}>
             <IconFolder size={18} /> Проекты
           </NavLink>
+          <NavLink to="/analytics" className={({ isActive }) => isActive ? styles.active : ''}>
+            <IconChart size={18} /> Аналитика
+          </NavLink>
           <NavLink to="/managers" className={({ isActive }) => isActive ? styles.active : ''}>
             <IconUsers size={18} /> Менеджеры
           </NavLink>
           <NavLink to="/calls" className={({ isActive }) => isActive ? styles.active : ''}>
             <IconPhoneWave size={18} /> Звонки
-          </NavLink>
-          <NavLink to="/analytics" className={({ isActive }) => isActive ? styles.active : ''}>
-            <IconChart size={18} /> Аналитика
           </NavLink>
         </nav>
 

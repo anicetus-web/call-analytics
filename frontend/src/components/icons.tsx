@@ -57,9 +57,9 @@ export function IconPhoneWave({ size, className }: IconProps) {
 export function IconHelp({ size, className }: IconProps) {
   return (
     <svg {...base(size)} className={className}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M9.2 9.5a3 3 0 0 1 5.6 1.5c0 2-3 2.5-3 4" />
-      <path d="M12 17.2h.01" strokeWidth={3} />
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3.5v3.4M12 17.1v3.4M3.5 12h3.4M17.1 12h3.4" />
     </svg>
   )
 }
@@ -141,10 +141,10 @@ export function IconTrend({ size, className }: IconProps) {
 
 export function IconChart({ size, className }: IconProps) {
   return (
-    <svg {...base(size)} className={className}>
-      <path d="M4 20V10" />
-      <path d="M12 20V4" />
-      <path d="M20 20v-7" />
+    <svg {...base(size)} className={className} strokeWidth={2.4} strokeLinecap="round">
+      <path d="M6 19v-5" />
+      <path d="M12 19V9" />
+      <path d="M18 19V6" />
     </svg>
   )
 }
