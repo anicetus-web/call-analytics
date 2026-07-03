@@ -232,10 +232,39 @@
   outline: none !important;
 }
 
+.donutWrap {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  flex-shrink: 0;
+}
+
+.donutCenter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.donutCenterValue {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.donutCenterLabel {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
 .donutLegend {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   flex: 1;
   min-width: 140px;
 }
@@ -246,6 +275,12 @@
   gap: 8px;
   font-size: 13px;
   color: var(--text);
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+.donutLegendRow:hover {
+  background: var(--bg-hover);
 }
 
 .donutDot {
@@ -255,18 +290,21 @@
   flex-shrink: 0;
 }
 
-.donutCount {
-  margin-left: auto;
-  font-weight: 600;
+.donutLegendName {
   color: var(--text-muted);
 }
 
-.donutTotal {
-  font-size: 12px;
+.donutCount {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.donutPct {
+  font-size: 11px;
   color: var(--text-faint);
-  margin-top: 4px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
+  min-width: 32px;
+  text-align: right;
 }
 
 .errorList {

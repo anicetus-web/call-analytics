@@ -1,12 +1,24 @@
 import { useEffect, useState, FormEvent, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { getProjects, createProject, archiveProject, Project } from '../api'
+import { getProjects, createProject, archiveProject, getCallsTimeline, Project, CallsTimelinePoint } from '../api'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import Modal from '../components/Modal'
 import Avatar from '../components/Avatar'
 import QuickActions from '../components/QuickActions'
 import { IconSearch, IconPlus, IconGroup, LogoMark } from '../components/icons'
 import styles from './ProjectsPage.module.css'
 import formStyles from '../components/Form.module.css'
+
+function isoDaysAgo(days: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - days)
+  return d.toISOString().slice(0, 10)
+}
+
+function fmtShortDate(iso: string): string {
+  const d = new Date(iso)
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`
+}
 
 const GRADIENTS = [
   'linear-gradient(135deg, rgba(236,72,153,0.35), rgba(139,92,246,0.25))',
@@ -22,6 +34,7 @@ export default function ProjectsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [query, setQuery] = useState('')
   const [menuFor, setMenuFor] = useState<number | null>(null)
+  const [trend, setTrend] = useState<CallsTimelinePoint[]>([])
 
   function reload() {
     setLoading(true)
@@ -32,6 +45,12 @@ export default function ProjectsPage() {
   }
 
   useEffect(reload, [])
+
+  useEffect(() => {
+    getCallsTimeline({ dateFrom: isoDaysAgo(29) })
+      .then(setTrend)
+      .catch(() => {})
+  }, [])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -90,6 +109,52 @@ export default function ProjectsPage() {
       {query && projects.length > 0 && (
         <div className={styles.searchResultCount}>
           Найдено: {filtered.length} из {projects.length}
+        </div>
+      )}
+
+      {trend.some(t => t.call_count > 0) && (
+        <div className={styles.trendCard}>
+          <div className={styles.trendHeader}>
+            <span className={styles.trendTitle}>Звонки за последние 30 дней</span>
+          </div>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={trend} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+              <defs>
+                <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ec4899" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#6366f1" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickFormatter={fmtShortDate}
+                tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+                stroke="var(--border)"
+                interval="preserveStartEnd"
+              />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} stroke="var(--border)" />
+              <Tooltip
+                labelFormatter={fmtShortDate}
+                formatter={(v: number) => [`${v}`, 'Звонков']}
+                contentStyle={{
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  color: 'var(--text)',
+                }}
+                labelStyle={{ color: 'var(--text-muted)' }}
+              />
+              <Area
+                type="monotone"
+                dataKey="call_count"
+                stroke="#ec4899"
+                strokeWidth={2.5}
+                fill="url(#trendFill)"
+                activeDot={{ r: 5, fill: '#ec4899', stroke: 'var(--bg-card)', strokeWidth: 2 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       )}
 

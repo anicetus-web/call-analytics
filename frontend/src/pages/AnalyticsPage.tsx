@@ -235,25 +235,33 @@ export default function AnalyticsPage() {
                 <div className={styles.empty}>Нет оценённых звонков за выбранный период</div>
               ) : (
                 <div className={styles.donutRow}>
-                  <ResponsiveContainer width={180} height={180}>
-                    <PieChart>
-                      <Pie data={qualityData} dataKey="value" innerRadius={55} outerRadius={80} paddingAngle={2}>
-                        {qualityData.map(d => (
-                          <Cell key={d.key} fill={QUALITY_COLORS[d.key as keyof typeof QUALITY_COLORS]} />
-                        ))}
-                      </Pie>
-                      <Tooltip {...chartTooltipStyle} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <div className={styles.donutWrap}>
+                    <ResponsiveContainer width={160} height={160}>
+                      <PieChart>
+                        <Pie data={qualityData} dataKey="value" innerRadius={54} outerRadius={72} paddingAngle={3} cornerRadius={4} startAngle={90} endAngle={-270}>
+                          {qualityData.map(d => (
+                            <Cell key={d.key} fill={QUALITY_COLORS[d.key as keyof typeof QUALITY_COLORS]} stroke="none" />
+                          ))}
+                        </Pie>
+                        <Tooltip {...chartTooltipStyle} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className={styles.donutCenter}>
+                      <div className={styles.donutCenterValue}>{quality?.total}</div>
+                      <div className={styles.donutCenterLabel}>звонков</div>
+                    </div>
+                  </div>
                   <div className={styles.donutLegend}>
                     {qualityData.map(d => (
                       <div key={d.key} className={styles.donutLegendRow}>
                         <span className={styles.donutDot} style={{ background: QUALITY_COLORS[d.key as keyof typeof QUALITY_COLORS] }} />
-                        {d.name}
+                        <span className={styles.donutLegendName}>{d.name}</span>
                         <span className={styles.donutCount}>{d.value}</span>
+                        <span className={styles.donutPct}>
+                          {quality?.total ? Math.round((d.value / quality.total) * 100) : 0}%
+                        </span>
                       </div>
                     ))}
-                    <div className={styles.donutTotal}>Всего оценено: {quality?.total}</div>
                   </div>
                 </div>
               )}

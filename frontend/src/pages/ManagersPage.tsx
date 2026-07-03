@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { getManagers, createManager, updateManager, deleteManager, Manager } from '../api'
 import Modal from '../components/Modal'
 import Avatar from '../components/Avatar'
+import SessionStatus from '../components/SessionStatus'
 import { IconSearch } from '../components/icons'
 import styles from './ManagersPage.module.css'
 import formStyles from '../components/Form.module.css'
@@ -82,6 +83,7 @@ export default function ManagersPage() {
                     {m.login && <> · логин: {m.login}</>}
                   </div>
                 </div>
+                <SessionStatus active={!!m.session_started_at} since={m.session_started_at} />
               </div>
               <div className={styles.rowActions}>
                 <button

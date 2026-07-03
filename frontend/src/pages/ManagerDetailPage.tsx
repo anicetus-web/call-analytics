@@ -8,6 +8,7 @@ import {
 import { IconPhoneWave, IconClock, IconTarget, IconTrend } from '../components/icons'
 import Avatar from '../components/Avatar'
 import Heatmap from '../components/Heatmap'
+import SessionStatus from '../components/SessionStatus'
 import styles from './ManagerDetailPage.module.css'
 
 const ACTIVITY_WINDOW_DAYS = 30
@@ -142,6 +143,7 @@ export default function ManagerDetailPage() {
             Telegram ID: {manager.telegram_id ?? '—'}
             {manager.login && <> · логин: {manager.login}</>}
           </p>
+          <SessionStatus active={!!manager.session_started_at} since={manager.session_started_at} size={13} />
         </div>
       </div>
 

@@ -57,6 +57,17 @@ class User(Base):
     password_hash: Mapped[Optional[str]] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+    # Telegram bot "session" (see bot/handlers.py): set when a manager runs
+    # /start (or picks a project via /switch_project), cleared on /finish.
+    # Both are NULL together or set together — session_started_at NULL means
+    # "no active session", regardless of session_project_id's stale value.
+    # ondelete="SET NULL": if the project is later archived/deleted, don't
+    # block that on a manager's leftover session pointer.
+    session_project_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="SET NULL")
+    )
+    session_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
     project_members: Mapped[list["ProjectMember"]] = relationship(back_populates="user")
     calls: Mapped[list["Call"]] = relationship(back_populates="user")
     created_projects: Mapped[list["Project"]] = relationship(

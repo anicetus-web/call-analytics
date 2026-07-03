@@ -115,6 +115,10 @@ export interface Manager {
   name: string
   telegram_id: number | null
   login: string | null
+  // Telegram bot session (set via /start, cleared via /finish). session_started_at
+  // is the source of truth for "active" — session_project_id may be stale otherwise.
+  session_project_id: number | null
+  session_started_at: string | null
 }
 
 export const getManagers = () =>

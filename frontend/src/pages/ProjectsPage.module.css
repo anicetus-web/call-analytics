@@ -68,6 +68,26 @@
   margin-bottom: 12px;
 }
 
+.trendCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px 8px;
+  margin-bottom: 20px;
+}
+
+.trendHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.trendTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
 .state { color: var(--text-muted); font-size: 15px; }
 .error { color: #f87171; }
 

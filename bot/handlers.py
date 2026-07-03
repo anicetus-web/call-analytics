@@ -120,6 +120,30 @@ async def _fetch_manager_projects(telegram_id: int) -> list[dict[str, Any]] | No
         return None
 
 
+async def _persist_session(user_id: int, project_id: int | None) -> None:
+    """Mirror the FSM session (active_project_id) onto the User row so the admin
+    panel can show "session active / no session" per manager — the FSM storage
+    itself is process-local memory, invisible outside the bot process.
+    project_id=None marks the session as ended (used by /finish)."""
+    from datetime import datetime, timezone
+    from sqlalchemy import update
+    from database import User, AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(
+                update(User)
+                .where(User.id == user_id)
+                .values(
+                    session_project_id=project_id,
+                    session_started_at=datetime.now(timezone.utc) if project_id is not None else None,
+                )
+            )
+            await session.commit()
+    except Exception:
+        logger.exception("Failed to persist session state for user_id=%d", user_id)
+
+
 def _projects_keyboard(projects: list[dict[str, Any]], mode: str) -> InlineKeyboardMarkup:
     """mode is "session" (picking the active project via /start or /switch_project)
     or "upload" (picking which project a specific pending file belongs to) —
@@ -300,6 +324,7 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     if len(projects) == 1:
         project = projects[0]
         await state.update_data(active_project_id=project["id"], active_user_id=project["user_id"])
+        await _persist_session(project["user_id"], project["id"])
         await message.answer(
             "🎙 <b>Call Analytics</b>\n\n"
             f"✅ Сессия начата. Проект: <b>{_esc(project['name'])}</b>\n\n"
@@ -335,7 +360,11 @@ async def cmd_switch_project(message: Message) -> None:
 
 @router.message(Command("finish"))
 async def cmd_finish(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    active_user_id = data.get("active_user_id")
     await state.clear()
+    if active_user_id is not None:
+        await _persist_session(active_user_id, None)
     await bot.set_my_commands(
         [BotCommand(command="start", description="Начать сессию")],
         scope=BotCommandScopeChat(chat_id=message.chat.id),
@@ -520,12 +549,14 @@ async def cb_select_project(callback: CallbackQuery, state: FSMContext) -> None:
             project_id=project_id, user_id=project["user_id"],
             active_project_id=project_id, active_user_id=project["user_id"],
         )
+        await _persist_session(project["user_id"], project_id)
         await callback.message.answer(
             "💬 Хотите добавить комментарий к звонку?",
             reply_markup=_comment_keyboard(),
         )
     else:  # mode == "session"
         await state.update_data(active_project_id=project_id, active_user_id=project["user_id"])
+        await _persist_session(project["user_id"], project_id)
         await callback.message.answer(
             f"✅ <b>Сессия начата</b>\nПроект: {_esc(project['name'])}\n\n"
             "Отправляйте записи звонков — выбирать проект каждый раз больше не нужно."
@@ -591,6 +622,7 @@ async def receive_file(message: Message, state: FSMContext) -> None:
             active_project_id=project["id"],
             active_user_id=project["user_id"],
         )
+        await _persist_session(project["user_id"], project["id"])
         await message.answer(
             "📎 <b>Файл получен</b>\n\nХотите добавить комментарий?",
             reply_markup=_comment_keyboard(),

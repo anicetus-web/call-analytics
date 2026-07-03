@@ -22,14 +22,18 @@
 .heatmap {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
+  /* Horizontal breathing room so a scaled-up edge cell (hour 0 or 23) has
+     room to grow without being clipped by the scroll container's edge —
+     that clipping was making the grid look like it "broke" on hover. */
+  padding: 6px 10px 2px;
   overflow-x: auto;
 }
 
 .heatmapRow {
   display: grid;
   grid-template-columns: 28px repeat(24, 1fr);
-  gap: 3px;
+  gap: 4px;
   align-items: center;
 }
 
@@ -48,7 +52,7 @@
 
 .heatmapCell, .heatmapCellActive {
   aspect-ratio: 1;
-  min-width: 12px;
+  min-width: 15px;
   border-radius: 3px;
   background: var(--bg-hover);
   cursor: pointer;
@@ -56,8 +60,8 @@
 }
 
 .heatmapCellActive {
-  box-shadow: 0 0 0 2px var(--accent-pink), 0 0 8px rgba(236,72,153,0.6);
-  transform: scale(1.25);
+  box-shadow: 0 0 0 2px var(--accent-pink), 0 0 6px rgba(236,72,153,0.5);
+  transform: scale(1.15);
   position: relative;
   z-index: 1;
 }

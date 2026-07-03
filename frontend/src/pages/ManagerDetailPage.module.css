@@ -140,8 +140,11 @@
 
 .activityStrip {
   display: flex;
-  gap: 3px;
+  gap: 4px;
   flex-wrap: wrap;
+  /* Breathing room so an edge cell's hover scale doesn't get visually
+     clipped by the container bounds (same fix as the Heatmap component). */
+  padding: 4px 6px;
 }
 
 .activityDay, .activityDayActive, .activityDaySelected, .activityDayActiveSelected {
@@ -156,8 +159,8 @@
   background: var(--accent-pink);
 }
 .activityDaySelected, .activityDayActiveSelected {
-  box-shadow: 0 0 0 2px #fff, 0 0 8px rgba(236,72,153,0.6);
-  transform: scale(1.25);
+  box-shadow: 0 0 0 2px #fff, 0 0 6px rgba(236,72,153,0.5);
+  transform: scale(1.15);
   position: relative;
   z-index: 1;
 }

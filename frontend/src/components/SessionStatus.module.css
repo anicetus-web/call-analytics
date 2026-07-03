@@ -1,0 +1,22 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  flex-shrink: 0;
+}
+.dotActive { filter: drop-shadow(0 0 4px rgba(16,185,129,0.7)); }
+.dotInactive { filter: drop-shadow(0 0 3px rgba(185,28,28,0.4)); }
+
+.labelActive {
+  font-size: 11px;
+  font-weight: 600;
+  color: #34d399;
+}
+
+.labelInactive {
+  font-size: 11px;
+  color: var(--text-faint);
+}

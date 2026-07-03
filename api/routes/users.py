@@ -13,6 +13,7 @@ Endpoints:
   DELETE /api/users/{id}     — delete manager (only if no calls attached)
 """
 
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -33,6 +34,11 @@ class ManagerOut(BaseModel):
     name: str
     telegram_id: int | None
     login: str | None
+    # Telegram bot session (see bot/handlers.py /start, /finish). session_started_at
+    # is the source of truth for "active" — session_project_id can be stale once a
+    # session ends, since only session_started_at is guaranteed to be cleared then.
+    session_project_id: int | None
+    session_started_at: datetime | None
 
     model_config = {"from_attributes": True}
 
