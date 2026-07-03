@@ -281,7 +281,7 @@ export default function ProjectDetailPage() {
           </div>
 
           {metrics.length > 0 && (
-            <div className={styles.section}>
+            <div className={managers.length === 0 ? `${styles.section} ${styles.sectionWide}` : styles.section}>
               <h2 className={styles.sectionTitle}>По критериям</h2>
               <div className={styles.metricTable}>
                 {metrics.map(m => (
@@ -302,7 +302,7 @@ export default function ProjectDetailPage() {
           )}
 
           {managers.length > 0 && (
-            <div className={styles.section}>
+            <div className={metrics.length === 0 ? `${styles.section} ${styles.sectionWide}` : styles.section}>
               <h2 className={styles.sectionTitle}>По менеджерам</h2>
               <div className={styles.metricTable}>
                 {managers.map(m => (

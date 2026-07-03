@@ -281,7 +281,7 @@ export default function ManagerDetailPage() {
               </div>
             )}
 
-            <div className={styles.section}>
+            <div className={styles.section} style={tab === 'all' ? { gridColumn: '1 / -1' } : undefined}>
               <h2 className={styles.sectionTitle}>Когда чаще звонит</h2>
               {heatmap.length === 0 ? (
                 <div className={styles.empty}>Нет данных за этот период</div>

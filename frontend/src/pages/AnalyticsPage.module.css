@@ -46,7 +46,10 @@
 
 .tiles {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* auto-fit instead of a fixed 4 columns: the "Лучший менеджер" tile is
+     hidden when a specific manager is selected, dropping the count to 3 —
+     a fixed 4-col grid left a dangling empty slot on the right in that case. */
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 14px;
   margin-bottom: 20px;
 }
@@ -69,9 +72,8 @@
 
 .tileLink {
   color: inherit;
-  text-decoration: underline;
-  text-decoration-color: var(--accent-pink);
-  text-underline-offset: 3px;
+  text-decoration: none;
+  transition: color 0.15s;
 }
 .tileLink:hover { color: var(--accent-pink); }
 
@@ -483,6 +485,5 @@
 }
 
 @media (max-width: 1100px) {
-  .tiles { grid-template-columns: repeat(2, 1fr); }
   .grid { grid-template-columns: 1fr; }
 }
