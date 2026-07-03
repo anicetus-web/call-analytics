@@ -59,6 +59,44 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-pink);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+
+.tileLink {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--accent-pink);
+  text-underline-offset: 3px;
+}
+.tileLink:hover { color: var(--accent-pink); }
+
+.managerBanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(236,72,153,0.14), rgba(99,102,241,0.14));
+  border: 1px solid var(--accent-pink);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--text);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.managerBanner:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(236,72,153,0.2);
+}
+.managerBannerArrow {
+  margin-left: auto;
+  color: var(--accent-pink);
+  font-size: 18px;
+  flex-shrink: 0;
 }
 
 .tileIcon {
@@ -97,6 +135,10 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 18px 20px;
+  transition: border-color 0.15s;
+}
+.section:hover {
+  border-color: rgba(236,72,153,0.4);
 }
 
 .sectionTitle {
@@ -222,6 +264,11 @@
   padding: 8px 10px;
   background: var(--bg-hover);
   border-radius: var(--radius-sm);
+  transition: background 0.15s, transform 0.15s;
+}
+.errorRow:hover {
+  background: var(--bg-elevated);
+  transform: translateX(2px);
 }
 
 .errorName {
@@ -230,9 +277,10 @@
 }
 
 .errorProject {
-  color: var(--text-faint);
+  color: var(--accent-blue);
   font-size: 12px;
 }
+.errorProject:hover { text-decoration: underline; }
 
 .errorCount {
   font-size: 12px;
@@ -254,6 +302,12 @@
   padding: 8px 10px;
   background: var(--bg-hover);
   border-radius: var(--radius-sm);
+  transition: background 0.15s, transform 0.15s;
+  cursor: pointer;
+}
+.rankRow:hover {
+  background: var(--bg-elevated);
+  transform: translateX(2px);
 }
 
 .rankMedal {
@@ -296,6 +350,11 @@
   padding: 5px 10px;
   border-radius: 999px;
   white-space: nowrap;
+  transition: background 0.15s, transform 0.15s;
+}
+.keywordChip:hover {
+  background: linear-gradient(135deg, rgba(236,72,153,0.3), rgba(99,102,241,0.3));
+  transform: translateY(-1px);
 }
 
 .keywordCount {

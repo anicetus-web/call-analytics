@@ -291,12 +291,14 @@ export interface HeatmapCell {
 
 interface GlobalAnalyticsParams {
   projectId?: number
+  userId?: number
   dateFrom?: string
   dateTo?: string
 }
 
-const globalParams = ({ projectId, dateFrom, dateTo }: GlobalAnalyticsParams) => ({
+const globalParams = ({ projectId, userId, dateFrom, dateTo }: GlobalAnalyticsParams) => ({
   project_id: projectId,
+  user_id: userId,
   date_from: dateFrom,
   date_to: dateTo,
 })

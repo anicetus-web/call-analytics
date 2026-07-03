@@ -664,6 +664,7 @@ async def manager_heatmap(
 async def _fetch_top_errors(
     db: AsyncSession, *,
     project_id: int | None, date_from: date | None, date_to: date | None, limit: int,
+    user_id: int | None = None,
 ) -> list[TopErrorItem]:
     """Metric items most often scored below 1.0 ("failed"), across all projects
     unless project_id is given. Each row carries its project name because metric
@@ -688,7 +689,7 @@ async def _fetch_top_errors(
         .having(fail_count_expr > 0)
         .order_by(fail_count_expr.desc())
         .limit(limit),
-        project_id=project_id, date_from=date_from, date_to=date_to,
+        project_id=project_id, date_from=date_from, date_to=date_to, user_id=user_id,
     )
     rows = (await db.execute(q)).all()
     return [
@@ -768,11 +769,14 @@ async def top_errors(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[TokenData, Depends(require_admin)],
     project_id: int | None = Query(default=None),
+    user_id: int | None = Query(default=None),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     limit: int = Query(default=5, ge=1, le=20),
 ) -> list[TopErrorItem]:
-    return await _fetch_top_errors(db, project_id=project_id, date_from=date_from, date_to=date_to, limit=limit)
+    return await _fetch_top_errors(
+        db, project_id=project_id, user_id=user_id, date_from=date_from, date_to=date_to, limit=limit,
+    )
 
 
 @router.get("/quality-distribution", response_model=QualityDistributionOut)
@@ -780,6 +784,7 @@ async def quality_distribution(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[TokenData, Depends(require_admin)],
     project_id: int | None = Query(default=None),
+    user_id: int | None = Query(default=None),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
 ) -> QualityDistributionOut:
@@ -790,7 +795,7 @@ async def quality_distribution(
         .join(AnalysisResult, AnalysisResult.call_id == Call.id)
         .where(Call.status == CallStatus.DONE)
         .group_by(Call.id),
-        project_id=project_id, date_from=date_from, date_to=date_to,
+        project_id=project_id, date_from=date_from, date_to=date_to, user_id=user_id,
     ).subquery()
 
     q = select(
@@ -870,6 +875,7 @@ async def keywords(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[TokenData, Depends(require_admin)],
     project_id: int | None = Query(default=None),
+    user_id: int | None = Query(default=None),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     limit: int = Query(default=15, ge=1, le=50),
@@ -884,7 +890,7 @@ async def keywords(
         .where(Call.status == CallStatus.DONE)
         .order_by(Call.created_at.desc())
         .limit(300),
-        project_id=project_id, date_from=date_from, date_to=date_to,
+        project_id=project_id, date_from=date_from, date_to=date_to, user_id=user_id,
     )
     rows = (await db.execute(q)).all()
 

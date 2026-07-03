@@ -1,11 +1,13 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import {
   getKpi, getTopErrors, getQualityDistribution, getManagersTrend, getKeywords,
-  getDurationBuckets, getMetricSummary, getProjects,
-  Kpi, TopErrorItem, QualityDistribution, ManagerTrendItem, KeywordItem, DurationBucket, MetricSummary, Project,
+  getDurationBuckets, getMetricSummary, getProjects, getManagers,
+  Kpi, TopErrorItem, QualityDistribution, ManagerTrendItem, KeywordItem, DurationBucket, MetricSummary, Project, Manager,
 } from '../api'
 import { PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { IconTarget, IconTrend, IconAlert, IconPhoneWave } from '../components/icons'
+import Avatar from '../components/Avatar'
 import styles from './AnalyticsPage.module.css'
 
 const QUALITY_COLORS = { high: '#10b981', medium: '#f59e0b', low: '#ef4444' }
@@ -36,7 +38,9 @@ function fmtDelta(v: number | null): { text: string; className: string } | null 
 
 export default function AnalyticsPage() {
   const [projects, setProjects] = useState<Project[]>([])
+  const [managers, setManagers] = useState<Manager[]>([])
   const [projectId, setProjectId] = useState('')
+  const [managerId, setManagerId] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
 
@@ -53,15 +57,43 @@ export default function AnalyticsPage() {
   const requestIdRef = useRef(0)
 
   useEffect(() => {
-    getProjects(true).then(setProjects).catch(() => {})
+    Promise.all([getProjects(true), getManagers()])
+      .then(([p, m]) => { setProjects(p); setManagers(m) })
+      .catch(() => {})
   }, [])
+
+  // Cascade: once a project is picked, only offer managers who belong to it —
+  // matches the pattern already used on the "Звонки" page.
+  const managerOptions = useMemo(() => {
+    if (!projectId) return managers
+    const project = projects.find(p => String(p.id) === projectId)
+    if (!project) return managers
+    const memberIds = new Set(project.members.map(m => m.id))
+    return managers.filter(m => memberIds.has(m.id))
+  }, [managers, projects, projectId])
+
+  function handleProjectChange(value: string) {
+    setProjectId(value)
+    if (value && managerId) {
+      const project = projects.find(p => String(p.id) === value)
+      if (project && !project.members.some(m => String(m.id) === managerId)) {
+        setManagerId('')
+      }
+    }
+  }
+
+  const selectedManager = managerId ? managers.find(m => String(m.id) === managerId) ?? null : null
 
   const load = useCallback(() => {
     setLoading(true)
     setError(null)
     const requestId = ++requestIdRef.current
     const numericProjectId = projectId ? Number(projectId) : undefined
-    const params = { projectId: numericProjectId, dateFrom: dateFrom || undefined, dateTo: dateTo || undefined }
+    const numericManagerId = managerId ? Number(managerId) : undefined
+    const params = {
+      projectId: numericProjectId, userId: numericManagerId,
+      dateFrom: dateFrom || undefined, dateTo: dateTo || undefined,
+    }
 
     const skillsPromise = numericProjectId
       ? getMetricSummary(numericProjectId, dateFrom || undefined, dateTo || undefined)
@@ -93,7 +125,7 @@ export default function AnalyticsPage() {
       .finally(() => {
         if (requestId === requestIdRef.current) setLoading(false)
       })
-  }, [projectId, dateFrom, dateTo])
+  }, [projectId, managerId, dateFrom, dateTo])
 
   useEffect(() => { load() }, [load])
 
@@ -120,15 +152,27 @@ export default function AnalyticsPage() {
       </div>
 
       <div className={styles.filters}>
-        <select className={styles.filterSelect} value={projectId} onChange={e => setProjectId(e.target.value)}>
+        <select className={styles.filterSelect} value={projectId} onChange={e => handleProjectChange(e.target.value)}>
           <option value="">Все проекты</option>
           {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        <select className={styles.filterSelect} value={managerId} onChange={e => setManagerId(e.target.value)}>
+          <option value="">Все менеджеры</option>
+          {managerOptions.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
         <input type="date" className={styles.filterDate} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
         <span className={styles.dash}>—</span>
         <input type="date" className={styles.filterDate} value={dateTo} onChange={e => setDateTo(e.target.value)} />
         <span className={styles.filterNote}>Диапазон дат влияет на всё, кроме KPI и рейтинга менеджеров — те всегда за последние 7 дней</span>
       </div>
+
+      {selectedManager && (
+        <Link to={`/managers/${selectedManager.id}`} className={styles.managerBanner}>
+          <Avatar name={selectedManager.name} size={32} />
+          <span>Открыть полный профиль менеджера «{selectedManager.name}» — активность, пропуски, вся история звонков</span>
+          <span className={styles.managerBannerArrow}>→</span>
+        </Link>
+      )}
 
       {loading ? (
         <div className={styles.state}>Загрузка...</div>
@@ -147,15 +191,23 @@ export default function AnalyticsPage() {
                 <div className={styles.tileLabel}>Средняя оценка AI за неделю</div>
               </div>
             </div>
-            <div className={styles.tile}>
-              <span className={styles.tileIcon}><IconTrend size={18} /></span>
-              <div>
-                <div className={styles.tileValue}>{kpi.best_manager ? kpi.best_manager.name : '—'}</div>
-                <div className={styles.tileLabel}>
-                  Лучший менеджер недели{kpi.best_manager && ` — ${fmtPct(kpi.best_manager.avg_score)}`}
+            {!selectedManager && (
+              <div className={styles.tile}>
+                <span className={styles.tileIcon}><IconTrend size={18} /></span>
+                <div>
+                  <div className={styles.tileValue}>
+                    {kpi.best_manager ? (
+                      <Link to={`/managers/${kpi.best_manager.user_id}`} className={styles.tileLink}>
+                        {kpi.best_manager.name}
+                      </Link>
+                    ) : '—'}
+                  </div>
+                  <div className={styles.tileLabel}>
+                    Лучший менеджер недели{kpi.best_manager && ` — ${fmtPct(kpi.best_manager.avg_score)}`}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
             <div className={styles.tile}>
               <span className={styles.tileIcon}><IconAlert size={18} /></span>
               <div>
@@ -208,7 +260,9 @@ export default function AnalyticsPage() {
             </div>
 
             <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>Частые ошибки менеджеров</h2>
+              <h2 className={styles.sectionTitle}>
+                Частые ошибки{selectedManager ? ` — ${selectedManager.name}` : ' менеджеров'}
+              </h2>
               {topErrors.length === 0 ? (
                 <div className={styles.empty}>Нет данных за выбранный период</div>
               ) : (
@@ -217,39 +271,45 @@ export default function AnalyticsPage() {
                     <div key={e.metric_item_id} className={styles.errorRow}>
                       <span className={styles.errorName}>
                         {e.metric_name}
-                        {!projectId && <span className={styles.errorProject}> · {e.project_name}</span>}
+                        {!projectId && (
+                          <Link to={`/projects/${e.project_id}`} className={styles.errorProject} onClick={ev => ev.stopPropagation()}>
+                            {' '}· {e.project_name}
+                          </Link>
+                        )}
                       </span>
-                      <span className={styles.errorCount}>{e.fail_count} случаев</span>
+                      <span className={styles.errorCount}>{e.fail_count} случаев · {fmtPct(e.fail_rate)}</span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>
-                Топ менеджеров <span className={styles.sectionHint}>за последние 7 дней</span>
-              </h2>
-              {topManagers.length === 0 ? (
-                <div className={styles.empty}>Нет оценённых звонков за неделю</div>
-              ) : (
-                <div className={styles.rankList}>
-                  {topManagers.map((m, i) => {
-                    const delta = fmtDelta(m.delta)
-                    return (
-                      <div key={m.user_id} className={styles.rankRow}>
-                        <span className={styles.rankMedal}>{['🥇', '🥈', '🥉'][i]}</span>
-                        <span className={styles.rankName}>{m.name}</span>
-                        <span className={styles.rankScore}>{fmtPct(m.avg_score)}</span>
-                        {delta && <span className={delta.className}>{delta.text}</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+            {!selectedManager && (
+              <div className={styles.section}>
+                <h2 className={styles.sectionTitle}>
+                  Топ менеджеров <span className={styles.sectionHint}>за последние 7 дней</span>
+                </h2>
+                {topManagers.length === 0 ? (
+                  <div className={styles.empty}>Нет оценённых звонков за неделю</div>
+                ) : (
+                  <div className={styles.rankList}>
+                    {topManagers.map((m, i) => {
+                      const delta = fmtDelta(m.delta)
+                      return (
+                        <Link to={`/managers/${m.user_id}`} key={m.user_id} className={styles.rankRow}>
+                          <span className={styles.rankMedal}>{['🥇', '🥈', '🥉'][i]}</span>
+                          <span className={styles.rankName}>{m.name}</span>
+                          <span className={styles.rankScore}>{fmtPct(m.avg_score)}</span>
+                          {delta && <span className={delta.className}>{delta.text}</span>}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
-            {worstManagers.length > 0 && (
+            {!selectedManager && worstManagers.length > 0 && (
               <div className={styles.section}>
                 <h2 className={styles.sectionTitle}>
                   Требуют внимания <span className={styles.sectionHint}>за последние 7 дней</span>
@@ -258,12 +318,12 @@ export default function AnalyticsPage() {
                   {worstManagers.map(m => {
                     const delta = fmtDelta(m.delta)
                     return (
-                      <div key={m.user_id} className={styles.rankRow}>
+                      <Link to={`/managers/${m.user_id}`} key={m.user_id} className={styles.rankRow}>
                         <span className={styles.rankMedal}><IconAlert size={16} /></span>
                         <span className={styles.rankName}>{m.name}</span>
                         <span className={styles.rankScore}>{fmtPct(m.avg_score)}</span>
                         {delta && <span className={delta.className}>{delta.text}</span>}
-                      </div>
+                      </Link>
                     )
                   })}
                 </div>
