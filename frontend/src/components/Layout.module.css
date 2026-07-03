@@ -69,8 +69,13 @@
   padding: 10px;
   border-radius: var(--radius-sm);
   background: var(--bg-card);
+  border: 1px solid transparent;
   margin-top: 12px;
+  text-align: left;
+  width: 100%;
+  transition: border-color 0.15s;
 }
+.profile:hover { border-color: var(--accent-pink); }
 
 .profileInfo { min-width: 0; }
 

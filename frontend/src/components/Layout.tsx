@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, FormEvent } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
-import { logout, getMe, CurrentUser } from '../api'
+import { logout, getMe, updateMe, CurrentUser } from '../api'
 import { LogoMark, IconFolder, IconUsers, IconPhoneWave, IconLogout } from './icons'
 import Avatar from './Avatar'
+import Modal from './Modal'
 import styles from './Layout.module.css'
+import formStyles from './Form.module.css'
 
 export default function Layout() {
   const [me, setMe] = useState<CurrentUser | null>(null)
+  const [editingProfile, setEditingProfile] = useState(false)
 
   useEffect(() => {
     getMe().then(setMe).catch(() => {})
@@ -32,13 +35,13 @@ export default function Layout() {
         </nav>
 
         {me && (
-          <div className={styles.profile}>
+          <button className={styles.profile} onClick={() => setEditingProfile(true)}>
             <Avatar name={me.name} size={34} />
             <div className={styles.profileInfo}>
               <div className={styles.profileName}>{me.name}</div>
               <div className={styles.profileRole}>Администратор</div>
             </div>
-          </div>
+          </button>
         )}
         <button className={styles.logoutBtn} onClick={logout}>
           <IconLogout size={16} /> Выйти
@@ -47,6 +50,68 @@ export default function Layout() {
       <main className={styles.main}>
         <Outlet />
       </main>
+
+      {editingProfile && me && (
+        <EditProfileModal
+          me={me}
+          onClose={() => setEditingProfile(false)}
+          onSaved={updated => { setMe(updated); setEditingProfile(false) }}
+        />
+      )}
     </div>
+  )
+}
+
+function EditProfileModal({
+  me, onClose, onSaved,
+}: { me: CurrentUser; onClose: () => void; onSaved: (u: CurrentUser) => void }) {
+  const [name, setName] = useState(me.name)
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setSaving(true)
+    try {
+      const updated = await updateMe(name)
+      onSaved(updated)
+    } catch {
+      setError('Не удалось сохранить имя')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal title="Профиль" onClose={onClose}>
+      <form className={formStyles.form} onSubmit={handleSubmit}>
+        {error && <div className={formStyles.error}>{error}</div>}
+        <label className={formStyles.label}>
+          Имя
+          <input
+            className={formStyles.input}
+            value={name}
+            onChange={e => setName(e.target.value)}
+            required
+            autoFocus
+          />
+        </label>
+        {me.login && (
+          <label className={formStyles.label}>
+            Логин
+            <input className={formStyles.input} value={me.login} disabled />
+          </label>
+        )}
+        <div className={formStyles.actions}>
+          <button className={formStyles.btnPrimary} type="submit" disabled={saving}>
+            {saving ? 'Сохранение...' : 'Сохранить'}
+          </button>
+          <button className={formStyles.btnSecondary} type="button" onClick={onClose}>
+            Отмена
+          </button>
+        </div>
+      </form>
+    </Modal>
   )
 }

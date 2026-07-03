@@ -11,16 +11,18 @@ const base = (size = 20) => ({
   strokeLinejoin: 'round' as const,
 })
 
-// Logo mark: a speech bubble built from a soundwave — reads as "calls + analytics"
-// at a glance, unlike a plain phone handset.
+// Logo mark: a simple audio waveform — four bars of varying height, symmetric
+// around the vertical center. Deliberately minimal so it stays crisp at the
+// small sizes it's actually rendered at (20-26px), unlike the earlier
+// speech-bubble-plus-bars combination which turned into a muddy blob that
+// small.
 export function LogoMark({ size = 24, className }: IconProps) {
   return (
-    <svg {...base(size)} className={className}>
-      <path d="M4 5.5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-4.5 3.5V17H4a1 1 0 0 1-1-1v-9.5a1 1 0 0 1 1-1Z" />
-      <path d="M7 12V9.5" />
-      <path d="M10 12.5V8" />
-      <path d="M13 12V10" />
-      <path d="M16 12.5V7.5" />
+    <svg {...base(size)} className={className} strokeWidth={2.2}>
+      <path d="M4 9v6" />
+      <path d="M9 5v14" />
+      <path d="M14 7v10" />
+      <path d="M19 9v6" />
     </svg>
   )
 }
@@ -56,8 +58,8 @@ export function IconHelp({ size, className }: IconProps) {
   return (
     <svg {...base(size)} className={className}>
       <circle cx="12" cy="12" r="9" />
-      <path d="M9.5 9.2a2.5 2.5 0 1 1 3.7 2.2c-.8.5-1.2 1-1.2 1.9" />
-      <circle cx="12" cy="16.8" r="0.15" fill="currentColor" stroke="none" />
+      <path d="M9.2 9.5a3 3 0 0 1 5.6 1.5c0 2-3 2.5-3 4" />
+      <path d="M12 17.2h.01" strokeWidth={3} />
     </svg>
   )
 }
@@ -104,7 +106,7 @@ export function IconAlert({ size, className }: IconProps) {
     <svg {...base(size)} className={className}>
       <path d="M12 3.5 21 19.5H3L12 3.5Z" />
       <path d="M12 10v4" />
-      <circle cx="12" cy="16.7" r="0.15" fill="currentColor" stroke="none" />
+      <path d="M12 16.7h.01" strokeWidth={3} />
     </svg>
   )
 }

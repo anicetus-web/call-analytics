@@ -81,7 +81,7 @@ def create_app() -> FastAPI:
     if settings.RUN_API:
         from fastapi import Depends, HTTPException
         from fastapi.security import OAuth2PasswordRequestForm
-        from pydantic import BaseModel
+        from pydantic import BaseModel, Field
         from sqlalchemy import select
         from database import get_db, User
         from sqlalchemy.ext.asyncio import AsyncSession
@@ -99,6 +99,9 @@ def create_app() -> FastAPI:
             name: str
             login: str | None
 
+        class CurrentUserUpdate(BaseModel):
+            name: str = Field(min_length=1, max_length=255)
+
         @app.get("/api/auth/me", response_model=CurrentUserOut, tags=["auth"])
         async def me(
             current: TokenData = Depends(require_admin),
@@ -108,6 +111,20 @@ def create_app() -> FastAPI:
             user = result.scalar_one_or_none()
             if user is None:
                 raise HTTPException(status_code=404, detail="User not found")
+            return CurrentUserOut(id=user.id, name=user.name, login=user.login)
+
+        @app.patch("/api/auth/me", response_model=CurrentUserOut, tags=["auth"])
+        async def update_me(
+            body: CurrentUserUpdate,
+            current: TokenData = Depends(require_admin),
+            db: AsyncSession = Depends(get_db),
+        ) -> CurrentUserOut:
+            result = await db.execute(select(User).where(User.id == current.user_id))
+            user = result.scalar_one_or_none()
+            if user is None:
+                raise HTTPException(status_code=404, detail="User not found")
+            user.name = body.name
+            await db.flush()
             return CurrentUserOut(id=user.id, name=user.name, login=user.login)
 
         app.include_router(users_router)

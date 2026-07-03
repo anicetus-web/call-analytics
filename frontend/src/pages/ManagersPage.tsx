@@ -1,7 +1,8 @@
-import { useEffect, useState, FormEvent } from 'react'
+import { useEffect, useState, useMemo, FormEvent } from 'react'
 import { getManagers, createManager, updateManager, deleteManager, Manager } from '../api'
 import Modal from '../components/Modal'
 import Avatar from '../components/Avatar'
+import { IconSearch } from '../components/icons'
 import styles from './ManagersPage.module.css'
 import formStyles from '../components/Form.module.css'
 
@@ -11,6 +12,7 @@ export default function ManagersPage() {
   const [error, setError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [editing, setEditing] = useState<Manager | null>(null)
+  const [query, setQuery] = useState('')
 
   function reload() {
     setLoading(true)
@@ -21,6 +23,14 @@ export default function ManagersPage() {
   }
 
   useEffect(reload, [])
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return managers
+    return managers.filter(m =>
+      m.name.toLowerCase().includes(q) || String(m.telegram_id ?? '').includes(q)
+    )
+  }, [managers, query])
 
   async function handleDelete(m: Manager) {
     if (!confirm(`Удалить менеджера «${m.name}»? Это возможно только если у него нет звонков.`)) return
@@ -39,16 +49,28 @@ export default function ManagersPage() {
     <div>
       <div className={styles.header}>
         <h1 className={styles.title}>Менеджеры</h1>
-        <button className={formStyles.btnPrimary} onClick={() => setShowCreate(true)}>
-          + Новый менеджер
-        </button>
+        <div className={styles.headerActions}>
+          <div className={styles.search}>
+            <IconSearch size={16} className={styles.searchIcon} />
+            <input
+              placeholder="Поиск по имени или Telegram ID..."
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+            />
+          </div>
+          <button className={formStyles.btnPrimary} onClick={() => setShowCreate(true)}>
+            + Новый менеджер
+          </button>
+        </div>
       </div>
 
       {managers.length === 0 ? (
         <div className={styles.empty}>Менеджеров пока нет</div>
+      ) : filtered.length === 0 ? (
+        <div className={styles.empty}>Ничего не найдено по запросу «{query}»</div>
       ) : (
         <div className={styles.list}>
-          {managers.map(m => (
+          {filtered.map(m => (
             <div key={m.id} className={styles.row}>
               <div className={styles.rowLeft}>
                 <Avatar name={m.name} size={36} />

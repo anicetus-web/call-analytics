@@ -55,6 +55,9 @@ export interface CurrentUser {
 export const getMe = () =>
   api.get<CurrentUser>('/auth/me').then(r => r.data)
 
+export const updateMe = (name: string) =>
+  api.patch<CurrentUser>('/auth/me', { name }).then(r => r.data)
+
 export function logout(): void {
   localStorage.removeItem('token')
   window.location.href = '/login'

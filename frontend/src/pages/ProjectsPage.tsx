@@ -4,7 +4,7 @@ import { getProjects, createProject, archiveProject, Project } from '../api'
 import Modal from '../components/Modal'
 import Avatar from '../components/Avatar'
 import QuickActions from '../components/QuickActions'
-import { IconSearch, IconPlus, IconGroup } from '../components/icons'
+import { IconSearch, IconPlus, IconGroup, LogoMark } from '../components/icons'
 import styles from './ProjectsPage.module.css'
 import formStyles from '../components/Form.module.css'
 
@@ -70,12 +70,28 @@ export default function ProjectsPage() {
               value={query}
               onChange={e => setQuery(e.target.value)}
             />
+            {query && (
+              <button
+                className={styles.searchClear}
+                onClick={() => setQuery('')}
+                type="button"
+                aria-label="Очистить поиск"
+              >
+                ×
+              </button>
+            )}
           </div>
           <button className={formStyles.btnPrimary} onClick={() => setShowCreate(true)}>
             <IconPlus size={16} /> Новый проект
           </button>
         </div>
       </div>
+
+      {query && projects.length > 0 && (
+        <div className={styles.searchResultCount}>
+          Найдено: {filtered.length} из {projects.length}
+        </div>
+      )}
 
       {projects.length === 0 ? (
         <div className={styles.empty}>Нет активных проектов</div>
@@ -129,8 +145,9 @@ export default function ProjectsPage() {
       <QuickActions onChanged={reload} />
 
       <div className={styles.banner}>
+        <span className={styles.bannerIcon}><LogoMark size={20} /></span>
         <div>
-          <div className={styles.bannerTitle}>🚀 Добро пожаловать в Call Analytics!</div>
+          <div className={styles.bannerTitle}>Добро пожаловать в Call Analytics</div>
           <p className={styles.bannerText}>
             Выберите проект для начала работы или создайте новый, чтобы начать отслеживать
             эффективность вашей команды.

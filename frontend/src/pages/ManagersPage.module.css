@@ -3,6 +3,8 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .title {
@@ -10,6 +12,33 @@
   font-weight: 700;
   color: var(--text);
 }
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  min-width: 260px;
+}
+.search input {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 13px;
+  width: 100%;
+}
+.search input::placeholder { color: var(--text-faint); }
+.searchIcon { color: var(--text-faint); flex-shrink: 0; }
 
 .state { color: var(--text-muted); font-size: 15px; }
 .error { color: #f87171; }
