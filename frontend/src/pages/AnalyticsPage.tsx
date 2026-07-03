@@ -101,7 +101,7 @@ export default function AnalyticsPage() {
       : Promise.resolve([])
 
     Promise.all([
-      getKpi(numericProjectId),
+      getKpi(numericProjectId, numericManagerId),
       getQualityDistribution(params),
       getTopErrors(params, 5),
       getManagersTrend(numericProjectId),
@@ -237,9 +237,9 @@ export default function AnalyticsPage() {
               ) : (
                 <div className={styles.donutRow}>
                   <div className={styles.donutWrap}>
-                    <ResponsiveContainer width={160} height={160}>
+                    <ResponsiveContainer width={220} height={220}>
                       <PieChart>
-                        <Pie data={qualityData} dataKey="value" innerRadius={54} outerRadius={72} paddingAngle={3} cornerRadius={4} startAngle={90} endAngle={-270}>
+                        <Pie data={qualityData} dataKey="value" innerRadius={78} outerRadius={104} paddingAngle={3} cornerRadius={5} startAngle={90} endAngle={-270}>
                           {qualityData.map(d => (
                             <Cell key={d.key} fill={QUALITY_COLORS[d.key as keyof typeof QUALITY_COLORS]} stroke="none" />
                           ))}

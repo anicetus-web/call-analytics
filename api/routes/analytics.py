@@ -633,6 +633,46 @@ async def manager_timeline(
     ]
 
 
+@router.get("/managers/{user_id}/score-timeline", response_model=list[TimelineItem])
+async def manager_score_timeline(
+    user_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    project_id: int | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+) -> list[TimelineItem]:
+    """Daily average AI score for one manager (mirrors /projects/{id}/timeline
+    but scoped to a manager instead of a whole project). A separate endpoint
+    from /managers/{id}/timeline on purpose — that one intentionally counts
+    every call regardless of status for the manager's own activity view;
+    this one only counts DONE calls, since a score average needs analysis
+    results to exist."""
+    await _assert_user_exists(db, user_id)
+    day_col = func.date_trunc("day", Call.created_at).label("day")
+    q = _apply_common_filters(
+        select(
+            day_col,
+            func.avg(AnalysisResult.score).label("avg_score"),
+            func.count(func.distinct(Call.id)).label("call_count"),
+        )
+        .join(AnalysisResult, AnalysisResult.call_id == Call.id)
+        .where(Call.status == CallStatus.DONE)
+        .group_by(day_col)
+        .order_by(day_col),
+        project_id=project_id, date_from=date_from, date_to=date_to, user_id=user_id,
+    )
+    rows = (await db.execute(q)).all()
+    return [
+        TimelineItem(
+            date=row.day.date().isoformat() if hasattr(row.day, 'date') else str(row.day)[:10],
+            avg_score=round(float(row.avg_score) if row.avg_score is not None else 0.0, 3),
+            call_count=row.call_count,
+        )
+        for row in rows
+    ]
+
+
 @router.get("/managers/{user_id}/heatmap", response_model=list[HeatmapCell])
 async def manager_heatmap(
     user_id: int,
@@ -824,6 +864,7 @@ async def kpi(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[TokenData, Depends(require_admin)],
     project_id: int | None = Query(default=None),
+    user_id: int | None = Query(default=None),
 ) -> KpiOut:
     """Top-of-page KPI row: this week's avg score (+ delta vs last week), how
     many calls have been scored, the top manager this week, and the most
@@ -836,6 +877,8 @@ async def kpi(
     def _scope(q):
         if project_id is not None:
             q = q.where(Call.project_id == project_id)
+        if user_id is not None:
+            q = q.where(Call.user_id == user_id)
         return q
 
     current_q = _scope(
@@ -855,9 +898,12 @@ async def kpi(
     current_avg, calls_analyzed = (await db.execute(current_q)).one()
     prev_avg = (await db.execute(prev_q)).scalar()
 
-    trend = await _fetch_managers_trend(db, project_id=project_id)
+    # best_manager is meaningless (and redundant with the manager filter itself)
+    # once a specific manager is already selected — the frontend hides that tile
+    # in that case, so skip the extra query.
+    trend = [] if user_id is not None else await _fetch_managers_trend(db, project_id=project_id)
     top_errors_list = await _fetch_top_errors(
-        db, project_id=project_id, date_from=week_start.date(), date_to=None, limit=1,
+        db, project_id=project_id, user_id=user_id, date_from=week_start.date(), date_to=None, limit=1,
     )
 
     avg_score = float(current_avg) if current_avg is not None else 0.0

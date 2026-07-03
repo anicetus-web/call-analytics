@@ -361,8 +361,8 @@ export interface KeywordItem {
   count: number
 }
 
-export const getKpi = (projectId?: number) =>
-  api.get<Kpi>('/analytics/kpi', { params: { project_id: projectId } }).then(r => r.data)
+export const getKpi = (projectId?: number, userId?: number) =>
+  api.get<Kpi>('/analytics/kpi', { params: { project_id: projectId, user_id: userId } }).then(r => r.data)
 
 export const getTopErrors = (params: GlobalAnalyticsParams = {}, limit = 5) =>
   api.get<TopErrorItem[]>('/analytics/top-errors', { params: { ...globalParams(params), limit } }).then(r => r.data)
@@ -396,6 +396,9 @@ export const getManagerMetrics = (userId: number, projectId: number, dateFrom?: 
 
 export const getManagerTimeline = (userId: number, params: GlobalAnalyticsParams = {}) =>
   api.get<CallsTimelinePoint[]>(`/analytics/managers/${userId}/timeline`, { params: globalParams(params) }).then(r => r.data)
+
+export const getManagerScoreTimeline = (userId: number, params: GlobalAnalyticsParams = {}) =>
+  api.get<TimelinePoint[]>(`/analytics/managers/${userId}/score-timeline`, { params: globalParams(params) }).then(r => r.data)
 
 export const getManagerHeatmap = (userId: number, params: GlobalAnalyticsParams = {}) =>
   api.get<HeatmapCell[]>(`/analytics/managers/${userId}/heatmap`, { params: globalParams(params) }).then(r => r.data)

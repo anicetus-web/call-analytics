@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   getProject, getCalls, getMetricSummary, getManagerSummary, getTimeline,
+  getManagerScoreTimeline,
   updateProject, archiveProject, addMember, removeMember, getManagers,
   getMetricGroups, createMetricGroup, updateMetricGroup, deleteMetricGroup,
   createMetricItem, updateMetricItem, deleteMetricItem,
@@ -11,8 +12,47 @@ import {
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Modal from '../components/Modal'
 import Avatar from '../components/Avatar'
+import { IconPlus } from '../components/icons'
 import styles from './ProjectDetailPage.module.css'
 import formStyles from '../components/Form.module.css'
+
+const TIME_PRESETS = [
+  { key: 'week', label: 'Последняя неделя' },
+  { key: 'today', label: 'Сегодня' },
+  { key: 'yesterday', label: 'Вчера' },
+  { key: 'month', label: 'Последний месяц' },
+  { key: 'year', label: 'Последний год' },
+  { key: 'all', label: 'Всё время' },
+] as const
+type TimePreset = typeof TIME_PRESETS[number]['key']
+
+function presetRange(preset: TimePreset): { dateFrom?: string; dateTo?: string } {
+  const iso = (d: Date) => d.toISOString().slice(0, 10)
+  const today = new Date()
+  switch (preset) {
+    case 'today':
+      return { dateFrom: iso(today) }
+    case 'yesterday': {
+      const d = new Date(today); d.setDate(d.getDate() - 1)
+      return { dateFrom: iso(d), dateTo: iso(d) }
+    }
+    case 'week': {
+      const d = new Date(today); d.setDate(d.getDate() - 6)
+      return { dateFrom: iso(d) }
+    }
+    case 'month': {
+      const d = new Date(today); d.setDate(d.getDate() - 29)
+      return { dateFrom: iso(d) }
+    }
+    case 'year': {
+      const d = new Date(today); d.setDate(d.getDate() - 364)
+      return { dateFrom: iso(d) }
+    }
+    case 'all':
+    default:
+      return {}
+  }
+}
 
 type Tab = 'calls' | 'analytics' | 'settings'
 
@@ -62,6 +102,9 @@ export default function ProjectDetailPage() {
   const [metrics, setMetrics] = useState<MetricSummary[]>([])
   const [managers, setManagers] = useState<ManagerSummary[]>([])
   const [timeline, setTimeline] = useState<TimelinePoint[]>([])
+  const [timeRange, setTimeRange] = useState<TimePreset>('week')
+  const [timelineManagerId, setTimelineManagerId] = useState('')
+  const [timelineLoading, setTimelineLoading] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -95,11 +138,26 @@ export default function ProjectDetailPage() {
       loadCalls(0),
       getMetricSummary(projectId).then(setMetrics),
       getManagerSummary(projectId).then(setManagers),
-      getTimeline(projectId).then(setTimeline),
     ])
       .catch(() => setError('Не удалось загрузить данные проекта'))
       .finally(() => setLoading(false))
   }, [projectId, loadCalls, loadProject])
+
+  // "Средний балл по дням" has its own filters (period + optional manager), so
+  // it reloads independently of the rest of the Analytics tab.
+  const loadTimeline = useCallback(() => {
+    setTimelineLoading(true)
+    const { dateFrom, dateTo } = presetRange(timeRange)
+    const promise = timelineManagerId
+      ? getManagerScoreTimeline(Number(timelineManagerId), { projectId, dateFrom, dateTo })
+      : getTimeline(projectId, dateFrom, dateTo)
+    promise
+      .then(setTimeline)
+      .catch(() => setTimeline([]))
+      .finally(() => setTimelineLoading(false))
+  }, [projectId, timeRange, timelineManagerId])
+
+  useEffect(() => { loadTimeline() }, [loadTimeline])
 
   if (loading) return <div className={styles.state}>Загрузка...</div>
   if (error) return <div className={`${styles.state} ${styles.error}`}>{error}</div>
@@ -176,9 +234,32 @@ export default function ProjectDetailPage() {
 
       {tab === 'analytics' && (
         <div className={styles.analyticsGrid}>
-          {timeline.length > 0 && (
-            <div className={`${styles.section} ${styles.sectionWide}`}>
+          <div className={`${styles.section} ${styles.sectionWide}`}>
+            <div className={styles.timelineHeader}>
               <h2 className={styles.sectionTitle}>Средний балл по дням</h2>
+              <div className={styles.timelineFilters}>
+                <select
+                  className={formStyles.select}
+                  value={timeRange}
+                  onChange={e => setTimeRange(e.target.value as TimePreset)}
+                >
+                  {TIME_PRESETS.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+                </select>
+                <select
+                  className={formStyles.select}
+                  value={timelineManagerId}
+                  onChange={e => setTimelineManagerId(e.target.value)}
+                >
+                  <option value="">Все менеджеры</option>
+                  {project.members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+              </div>
+            </div>
+            {timelineLoading ? (
+              <div className={styles.state}>Загрузка...</div>
+            ) : timeline.length === 0 ? (
+              <div className={styles.empty}>Нет оценённых звонков за этот период</div>
+            ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={timeline}>
                   <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} stroke="var(--border)" />
@@ -196,8 +277,8 @@ export default function ProjectDetailPage() {
                   <Line type="monotone" dataKey="avg_score" stroke="#ec4899" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-          )}
+            )}
+          </div>
 
           {metrics.length > 0 && (
             <div className={styles.section}>
@@ -241,8 +322,8 @@ export default function ProjectDetailPage() {
             </div>
           )}
 
-          {metrics.length === 0 && managers.length === 0 && timeline.length === 0 && (
-            <div className={styles.empty}>Нет данных для аналитики</div>
+          {metrics.length === 0 && managers.length === 0 && (
+            <div className={styles.empty}>Нет данных по критериям и менеджерам за всё время</div>
           )}
         </div>
       )}
@@ -271,7 +352,7 @@ function SettingsTab({
       </div>
 
       <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Участники</h2>
+        <h2 className={styles.sectionTitle}>Менеджеры</h2>
         <MembersEditor project={project} onChanged={onProjectChanged} />
       </div>
 
@@ -404,7 +485,9 @@ function MembersEditor({ project, onChanged }: { project: Project; onChanged: ()
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
           </select>
-          <button className={formStyles.btnPrimary} type="submit" disabled={!selected}>Добавить</button>
+          <button className={styles.btnAddManager} type="submit" disabled={!selected}>
+            <IconPlus size={16} /> Добавить менеджера
+          </button>
         </form>
       )}
       {available.length === 0 && allManagers.length > 0 && (

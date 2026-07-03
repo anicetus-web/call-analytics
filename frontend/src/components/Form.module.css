@@ -45,6 +45,10 @@
 }
 
 .btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   background: linear-gradient(135deg, var(--accent-pink), var(--accent-pink-dark));
   color: #fff;
   border: none;
@@ -58,6 +62,10 @@
 .btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   background: var(--bg-hover);
   color: var(--text);
   border: 1px solid var(--border);
@@ -69,6 +77,10 @@
 .btnSecondary:hover { background: var(--bg-card); }
 
 .btnDanger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   background: transparent;
   color: #f87171;
   border: 1.5px solid rgba(239,68,68,0.4);

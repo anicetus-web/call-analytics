@@ -141,6 +141,42 @@
   .analyticsGrid { grid-template-columns: 1fr; }
 }
 
+.timelineHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.timelineFilters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btnAddManager {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple), var(--accent-blue));
+  background-size: 200% 200%;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-position 0.4s ease, transform 0.15s, opacity 0.15s;
+}
+.btnAddManager:hover:not(:disabled) {
+  background-position: 100% 100%;
+  transform: translateY(-1px);
+}
+.btnAddManager:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .sectionTitle {
   font-size: 16px;
   font-weight: 600;
