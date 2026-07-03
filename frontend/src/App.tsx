@@ -6,6 +6,7 @@ import ProjectDetailPage from './pages/ProjectDetailPage'
 import CallDetailPage from './pages/CallDetailPage'
 import CallsPage from './pages/CallsPage'
 import ManagersPage from './pages/ManagersPage'
+import AnalyticsPage from './pages/AnalyticsPage'
 import Layout from './components/Layout'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="calls" element={<CallsPage />} />
           <Route path="calls/:id" element={<CallDetailPage />} />
           <Route path="managers" element={<ManagersPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

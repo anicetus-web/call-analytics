@@ -110,3 +110,41 @@ export function IconAlert({ size, className }: IconProps) {
     </svg>
   )
 }
+
+export function IconClock({ size, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3.5 2" />
+    </svg>
+  )
+}
+
+export function IconTarget({ size, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="4.5" />
+      <path d="M12 11.9h.01" strokeWidth={3} />
+    </svg>
+  )
+}
+
+export function IconTrend({ size, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <path d="M4 16l5.5-5.5 4 4L20 8" />
+      <path d="M14.5 8H20v5.5" />
+    </svg>
+  )
+}
+
+export function IconChart({ size, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <path d="M4 20V10" />
+      <path d="M12 20V4" />
+      <path d="M20 20v-7" />
+    </svg>
+  )
+}

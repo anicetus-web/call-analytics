@@ -3,7 +3,7 @@ Analytics endpoints for the admin web panel.
 
 Aggregates call analysis results into project-level and manager-level summaries.
 
-Endpoints:
+Per-project endpoints (used by ProjectDetailPage):
   GET /api/analytics/projects/{id}/summary
     — per-metric average scores for the project
     — optional date range filter
@@ -17,9 +17,18 @@ Endpoints:
   GET /api/analytics/projects/{id}/timeline
     — average score per day for the project (for chart rendering)
     — returns: list of {date, avg_score, call_count}
+
+Global endpoints (used by the "Аналитика" dashboard page), all accept an
+optional project_id filter and date range, and aggregate across every project
+when project_id is omitted — mirrors the filtering pattern used by /api/calls:
+  GET /api/analytics/overview        — top-line stat tiles
+  GET /api/analytics/timeline        — calls/day for the line chart
+  GET /api/analytics/duration-buckets — call count grouped by duration range
+  GET /api/analytics/heatmap         — call count by weekday x hour of day
+  GET /api/analytics/managers        — manager leaderboard by avg score
 """
 
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -58,12 +67,50 @@ class TimelineItem(BaseModel):
     call_count: int
 
 
+class OverviewOut(BaseModel):
+    total_calls: int
+    avg_duration_seconds: float
+    avg_score: float
+    calls_last_7_days: int
+
+
+class CallsTimelinePoint(BaseModel):
+    date: str  # ISO date string "YYYY-MM-DD"
+    call_count: int
+
+
+class DurationBucket(BaseModel):
+    label: str
+    call_count: int
+
+
+class HeatmapCell(BaseModel):
+    weekday: int  # 0=Monday .. 6=Sunday (ISO)
+    hour: int  # 0..23
+    call_count: int
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 async def _assert_project_exists(db: AsyncSession, project_id: int) -> None:
     result = await db.execute(select(Project).where(Project.id == project_id))
     if result.scalar_one_or_none() is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+
+def _apply_common_filters(
+    q, *,
+    project_id: int | None,
+    date_from: date | None,
+    date_to: date | None,
+):
+    if project_id is not None:
+        q = q.where(Call.project_id == project_id)
+    if date_from:
+        q = q.where(Call.created_at >= datetime.combine(date_from, time.min, tzinfo=timezone.utc))
+    if date_to:
+        q = q.where(Call.created_at < datetime.combine(date_to + date.resolution, time.min, tzinfo=timezone.utc))
+    return q
 
 
 
@@ -213,6 +260,165 @@ async def project_timeline(
             # date_trunc returns timestamptz (e.g. 2024-01-15 00:00:00+00:00).
             # Cast to ISO date string with .date() to get "2024-01-15".
             date=row.day.date().isoformat() if hasattr(row.day, 'date') else str(row.day)[:10],
+            avg_score=round(float(row.avg_score) if row.avg_score is not None else 0.0, 3),
+            call_count=row.call_count,
+        )
+        for row in rows
+    ]
+
+
+# ── Global dashboard routes ──────────────────────────────────────────────────
+# All accept an optional project_id (omitted = across every project), mirroring
+# the filter pattern already used by GET /api/calls on the "Звонки" page.
+
+@router.get("/overview", response_model=OverviewOut)
+async def overview(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    project_id: int | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+) -> OverviewOut:
+    calls_q = _apply_common_filters(
+        select(
+            func.count(Call.id).label("total_calls"),
+            func.avg(Call.duration_seconds).label("avg_duration"),
+        ),
+        project_id=project_id, date_from=date_from, date_to=date_to,
+    )
+    total_calls, avg_duration = (await db.execute(calls_q)).one()
+
+    score_q = _apply_common_filters(
+        select(func.avg(AnalysisResult.score))
+        .join(Call, Call.id == AnalysisResult.call_id)
+        .where(Call.status == CallStatus.DONE),
+        project_id=project_id, date_from=date_from, date_to=date_to,
+    )
+    avg_score = (await db.execute(score_q)).scalar()
+
+    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    recent_q = select(func.count(Call.id)).where(Call.created_at >= week_ago)
+    if project_id is not None:
+        recent_q = recent_q.where(Call.project_id == project_id)
+    calls_last_7_days = (await db.execute(recent_q)).scalar() or 0
+
+    return OverviewOut(
+        total_calls=total_calls or 0,
+        avg_duration_seconds=round(float(avg_duration), 1) if avg_duration is not None else 0.0,
+        avg_score=round(float(avg_score), 3) if avg_score is not None else 0.0,
+        calls_last_7_days=calls_last_7_days,
+    )
+
+
+@router.get("/timeline", response_model=list[CallsTimelinePoint])
+async def calls_timeline(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    project_id: int | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+) -> list[CallsTimelinePoint]:
+    """Call volume per calendar day, regardless of processing status."""
+    day_col = func.date_trunc("day", Call.created_at).label("day")
+    q = _apply_common_filters(
+        select(day_col, func.count(Call.id).label("call_count")).group_by(day_col).order_by(day_col),
+        project_id=project_id, date_from=date_from, date_to=date_to,
+    )
+    rows = (await db.execute(q)).all()
+    return [
+        CallsTimelinePoint(
+            date=row.day.date().isoformat() if hasattr(row.day, 'date') else str(row.day)[:10],
+            call_count=row.call_count,
+        )
+        for row in rows
+    ]
+
+
+_DURATION_BUCKETS = [
+    ("<1 мин", 0, 60),
+    ("1–3 мин", 60, 180),
+    ("3–5 мин", 180, 300),
+    ("5–10 мин", 300, 600),
+    ("10+ мин", 600, None),
+]
+
+
+@router.get("/duration-buckets", response_model=list[DurationBucket])
+async def duration_buckets(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    project_id: int | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+) -> list[DurationBucket]:
+    """Distribution of calls across duration ranges. Calls without a known duration are excluded."""
+    base_q = _apply_common_filters(
+        select(func.count(Call.id)).where(Call.duration_seconds.isnot(None)),
+        project_id=project_id, date_from=date_from, date_to=date_to,
+    )
+
+    result: list[DurationBucket] = []
+    for label, lo, hi in _DURATION_BUCKETS:
+        q = base_q.where(Call.duration_seconds >= lo)
+        if hi is not None:
+            q = q.where(Call.duration_seconds < hi)
+        count = (await db.execute(q)).scalar() or 0
+        result.append(DurationBucket(label=label, call_count=count))
+    return result
+
+
+@router.get("/heatmap", response_model=list[HeatmapCell])
+async def heatmap(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    project_id: int | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+) -> list[HeatmapCell]:
+    """Call upload volume by weekday (0=Monday) and hour of day, in UTC."""
+    # ISODOW: 1=Monday..7=Sunday — shift to 0=Monday..6=Sunday to match JS Date conventions used on the frontend.
+    weekday_col = (func.extract("isodow", Call.created_at) - 1).label("weekday")
+    hour_col = func.extract("hour", Call.created_at).label("hour")
+    q = _apply_common_filters(
+        select(weekday_col, hour_col, func.count(Call.id).label("call_count"))
+        .group_by(weekday_col, hour_col),
+        project_id=project_id, date_from=date_from, date_to=date_to,
+    )
+    rows = (await db.execute(q)).all()
+    return [
+        HeatmapCell(weekday=int(row.weekday), hour=int(row.hour), call_count=row.call_count)
+        for row in rows
+    ]
+
+
+@router.get("/managers", response_model=list[ManagerSummaryItem])
+async def global_manager_summary(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    project_id: int | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+) -> list[ManagerSummaryItem]:
+    """Manager leaderboard by average score across DONE calls, optionally scoped to one project."""
+    q = _apply_common_filters(
+        select(
+            User.id,
+            User.name,
+            func.avg(AnalysisResult.score).label("avg_score"),
+            func.count(func.distinct(Call.id)).label("call_count"),
+        )
+        .join(Call, Call.user_id == User.id)
+        .join(AnalysisResult, AnalysisResult.call_id == Call.id)
+        .where(Call.status == CallStatus.DONE)
+        .group_by(User.id, User.name)
+        .order_by(func.avg(AnalysisResult.score).desc()),
+        project_id=project_id, date_from=date_from, date_to=date_to,
+    )
+    rows = (await db.execute(q)).all()
+    return [
+        ManagerSummaryItem(
+            user_id=row.id,
+            name=row.name,
             avg_score=round(float(row.avg_score) if row.avg_score is not None else 0.0, 3),
             call_count=row.call_count,
         )

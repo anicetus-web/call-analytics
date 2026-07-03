@@ -262,3 +262,56 @@ export const getManagerSummary = (projectId: number, dateFrom?: string, dateTo?:
 
 export const getTimeline = (projectId: number, dateFrom?: string, dateTo?: string) =>
   api.get<TimelinePoint[]>(`/analytics/projects/${projectId}/timeline`, { params: analyticsParams(dateFrom, dateTo) }).then(r => r.data)
+
+// ── Global analytics dashboard ("Аналитика") ───────────────────────────────
+// All accept an optional projectId (omitted = across every project).
+
+export interface AnalyticsOverview {
+  total_calls: number
+  avg_duration_seconds: number
+  avg_score: number
+  calls_last_7_days: number
+}
+
+export interface CallsTimelinePoint {
+  date: string
+  call_count: number
+}
+
+export interface DurationBucket {
+  label: string
+  call_count: number
+}
+
+export interface HeatmapCell {
+  weekday: number
+  hour: number
+  call_count: number
+}
+
+interface GlobalAnalyticsParams {
+  projectId?: number
+  dateFrom?: string
+  dateTo?: string
+}
+
+const globalParams = ({ projectId, dateFrom, dateTo }: GlobalAnalyticsParams) => ({
+  project_id: projectId,
+  date_from: dateFrom,
+  date_to: dateTo,
+})
+
+export const getAnalyticsOverview = (params: GlobalAnalyticsParams = {}) =>
+  api.get<AnalyticsOverview>('/analytics/overview', { params: globalParams(params) }).then(r => r.data)
+
+export const getCallsTimeline = (params: GlobalAnalyticsParams = {}) =>
+  api.get<CallsTimelinePoint[]>('/analytics/timeline', { params: globalParams(params) }).then(r => r.data)
+
+export const getDurationBuckets = (params: GlobalAnalyticsParams = {}) =>
+  api.get<DurationBucket[]>('/analytics/duration-buckets', { params: globalParams(params) }).then(r => r.data)
+
+export const getHeatmap = (params: GlobalAnalyticsParams = {}) =>
+  api.get<HeatmapCell[]>('/analytics/heatmap', { params: globalParams(params) }).then(r => r.data)
+
+export const getGlobalManagerSummary = (params: GlobalAnalyticsParams = {}) =>
+  api.get<ManagerSummary[]>('/analytics/managers', { params: globalParams(params) }).then(r => r.data)

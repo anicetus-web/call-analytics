@@ -1,7 +1,7 @@
 import { useEffect, useState, FormEvent } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import { logout, getMe, updateMe, CurrentUser } from '../api'
-import { LogoMark, IconFolder, IconUsers, IconPhoneWave, IconLogout } from './icons'
+import { LogoMark, IconFolder, IconUsers, IconPhoneWave, IconChart, IconLogout } from './icons'
 import Avatar from './Avatar'
 import Modal from './Modal'
 import styles from './Layout.module.css'
@@ -31,6 +31,9 @@ export default function Layout() {
           </NavLink>
           <NavLink to="/calls" className={({ isActive }) => isActive ? styles.active : ''}>
             <IconPhoneWave size={18} /> Звонки
+          </NavLink>
+          <NavLink to="/analytics" className={({ isActive }) => isActive ? styles.active : ''}>
+            <IconChart size={18} /> Аналитика
           </NavLink>
         </nav>
 
