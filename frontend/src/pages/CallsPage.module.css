@@ -56,11 +56,31 @@
 
 .statsRow {
   display: flex;
-  gap: 16px;
+  gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 18px;
-  font-size: 13px;
+}
+
+.statChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
   font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+  animation: fadeInUp 0.3s var(--ease-out) both;
+}
+/* Small dot in the status color at the front of each chip. */
+.statChip::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .state { color: var(--text-muted); padding: 20px 0; }
@@ -82,9 +102,13 @@
   grid-template-columns: 140px 1fr auto auto auto auto;
   align-items: center;
   gap: 14px;
-  transition: border-color 0.15s;
+  transition: border-color 0.18s var(--ease-out), transform 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out);
 }
-.row:hover { border-color: var(--accent-pink); }
+.row:hover {
+  border-color: var(--accent-pink);
+  transform: translateX(3px);
+  box-shadow: var(--shadow-card);
+}
 
 .projectBadge {
   font-size: 11px;
@@ -130,6 +154,7 @@
 .rowDate {
   font-size: 12px;
   color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
 }
 
 .loadMore {

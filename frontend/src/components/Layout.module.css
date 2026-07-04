@@ -35,7 +35,10 @@
   justify-content: center;
   color: #fff;
   flex-shrink: 0;
+  box-shadow: var(--shadow-glow-pink);
+  transition: transform 0.3s var(--ease-out);
 }
+.logo:hover .logoIcon { transform: rotate(-8deg) scale(1.05); }
 
 .nav {
   display: flex;
@@ -45,6 +48,7 @@
 }
 
 .nav a {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -53,14 +57,30 @@
   color: var(--text-muted);
   font-size: 14px;
   font-weight: 500;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.18s var(--ease-out), color 0.18s var(--ease-out), transform 0.18s var(--ease-out);
 }
-
-.nav a:hover { background: var(--bg-hover); color: var(--text); }
+/* Accent bar that slides in on the left edge of the active/hovered item. */
+.nav a::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(var(--accent-pink), var(--accent-blue));
+  transform: translateY(-50%);
+  transition: height 0.2s var(--ease-out);
+}
+.nav a:hover { background: var(--bg-hover); color: var(--text); transform: translateX(2px); }
+.nav a:hover::before { height: 40%; }
 .nav a.active {
   background: linear-gradient(135deg, rgba(236,72,153,0.18), rgba(99,102,241,0.18));
   color: #fff;
 }
+.nav a.active::before { height: 60%; }
+.nav a svg { transition: transform 0.18s var(--ease-out); }
+.nav a:hover svg { transform: scale(1.1); }
 
 .profile {
   display: flex;
@@ -113,4 +133,8 @@
   flex: 1;
   padding: 32px 36px;
   overflow-y: auto;
+}
+
+.page {
+  animation: fadeInUp 0.35s var(--ease-out);
 }

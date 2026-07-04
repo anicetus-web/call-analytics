@@ -22,6 +22,14 @@
 
   --radius: 14px;
   --radius-sm: 8px;
+
+  --shadow-card: 0 4px 20px rgba(0,0,0,0.25);
+  --shadow-lift: 0 10px 30px rgba(0,0,0,0.35);
+  --shadow-glow-pink: 0 6px 22px rgba(236,72,153,0.35);
+  --shadow-glow-blue: 0 6px 22px rgba(99,102,241,0.35);
+
+  /* Snappy, slightly-overshooting easing used for all interactive lifts. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body {
@@ -43,7 +51,52 @@ input, select, textarea {
   color: var(--text);
 }
 
+/* Keyboard-only focus ring — visible for tab users, invisible on mouse
+   click, so the premium look isn't marred by stray outlines. */
+:focus-visible {
+  outline: 2px solid var(--accent-pink);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
+/* ── Shared motion library ─────────────────────────────────────────────
+   Reused across pages/components so animations feel like one system. */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* Tabular (monospaced) figures for data — keeps numbers aligned and stops
+   width jitter as values change; a hallmark of polished analytics UIs. */
+.tabnum,
+[data-tabnum] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Respect users who ask the OS to minimize motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

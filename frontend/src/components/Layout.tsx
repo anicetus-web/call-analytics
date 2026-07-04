@@ -1,5 +1,5 @@
 import { useEffect, useState, FormEvent } from 'react'
-import { Outlet, NavLink } from 'react-router-dom'
+import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { logout, getMe, updateMe, CurrentUser } from '../api'
 import { LogoMark, IconFolder, IconUsers, IconPhoneWave, IconChart, IconLogout } from './icons'
 import Avatar from './Avatar'
@@ -10,6 +10,7 @@ import formStyles from './Form.module.css'
 export default function Layout() {
   const [me, setMe] = useState<CurrentUser | null>(null)
   const [editingProfile, setEditingProfile] = useState(false)
+  const location = useLocation()
 
   useEffect(() => {
     getMe().then(setMe).catch(() => {})
@@ -51,7 +52,11 @@ export default function Layout() {
         </button>
       </aside>
       <main className={styles.main}>
-        <Outlet />
+        {/* Keyed by pathname so page content re-runs its fade-in on every
+            navigation, giving routes a light entrance transition. */}
+        <div key={location.pathname} className={styles.page}>
+          <Outlet />
+        </div>
       </main>
 
       {editingProfile && me && (

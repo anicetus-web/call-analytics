@@ -62,8 +62,14 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  transition: transform 0.18s var(--ease-out), border-color 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out);
+  /* Staggered entrance — each tile fades up slightly after the previous. */
+  animation: fadeInUp 0.4s var(--ease-out) both;
 }
+.tile:nth-child(1) { animation-delay: 0.02s; }
+.tile:nth-child(2) { animation-delay: 0.07s; }
+.tile:nth-child(3) { animation-delay: 0.12s; }
+.tile:nth-child(4) { animation-delay: 0.17s; }
 .tile:hover {
   transform: translateY(-2px);
   border-color: var(--accent-pink);
@@ -142,13 +148,17 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: transform 0.18s var(--ease-out);
 }
+.tileClickable:hover:not(:disabled) .tileIcon,
+.tile:hover .tileIcon { transform: scale(1.08); }
 
 .tileValue {
   font-size: 22px;
   font-weight: 700;
   color: var(--text);
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 
 .tileLabel {
@@ -240,6 +250,7 @@
 .scoreRingValue {
   position: absolute;
   inset: 0;
+  font-variant-numeric: tabular-nums;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -313,6 +324,7 @@
   font-weight: 700;
   color: var(--text);
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
 .donutCenterLabel {
@@ -365,6 +377,7 @@
   color: var(--text-faint);
   min-width: 32px;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .errorList {
@@ -612,6 +625,7 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 .showAllLink {

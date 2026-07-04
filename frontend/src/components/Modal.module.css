@@ -2,12 +2,13 @@
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
   padding: 20px;
+  animation: fadeIn 0.2s ease;
 }
 
 .card {
@@ -20,6 +21,7 @@
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  animation: scaleIn 0.24s var(--ease-out);
 }
 
 .header {
@@ -36,12 +38,18 @@
 }
 
 .closeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
   background: none;
   border: none;
+  border-radius: var(--radius-sm);
   font-size: 22px;
   line-height: 1;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0 4px;
+  transition: color 0.15s, background 0.15s, transform 0.15s var(--ease-out);
 }
-.closeBtn:hover { color: var(--text); }
+.closeBtn:hover { color: var(--text); background: var(--bg-hover); transform: rotate(90deg); }
