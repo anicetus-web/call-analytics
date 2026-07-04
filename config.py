@@ -115,9 +115,19 @@ class Settings(BaseSettings):
     @field_validator("ADMIN_TELEGRAM_IDS", mode="before")
     @classmethod
     def parse_admin_ids(cls, v: object) -> list[int]:
-        # Support comma-separated string from .env: ADMIN_TELEGRAM_IDS=123,456
+        # Robust across env formats. pydantic-settings JSON-pre-parses complex
+        # fields, so the raw env value can reach here as: a comma-separated
+        # string ("123,456"), a single int (JSON-decoded "123456789"), a list
+        # (JSON-decoded "[123,456]"), or empty. Handle all of them.
+        if v is None or v == "":
+            return []
+        if isinstance(v, int):
+            return [v]
         if isinstance(v, str):
-            return [int(x.strip()) for x in v.split(",") if x.strip()]
+            # Tolerate a stray "[...]" wrapper too, then split on commas.
+            return [int(x.strip()) for x in v.strip().strip("[]").split(",") if x.strip()]
+        if isinstance(v, (list, tuple)):
+            return [int(x) for x in v]
         return v  # type: ignore[return-value]
 
     @field_validator("CORS_ORIGINS", mode="before")

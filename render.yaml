@@ -32,10 +32,13 @@ services:
         generateValue: true
       - key: JWT_EXPIRE_MINUTES
         value: "1440"
+      # Comma-separated, matching .env.example and the config validators —
+      # not a JSON array (that only parsed by luck of pydantic-settings' JSON
+      # pre-pass and is fragile across versions).
       - key: CORS_ORIGINS
-        value: '["https://call-analytics-frontend.onrender.com","http://localhost:5173"]'
+        value: "https://call-analytics-frontend.onrender.com,http://localhost:5173"
       - key: ADMIN_TELEGRAM_IDS
-        value: "[]"
+        value: ""
       - key: OPENAI_API_KEY
         value: "sk-STUB-REPLACE-WITH-REAL-OPENAI-KEY"
       - key: WHISPER_MODEL

@@ -44,7 +44,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import require_admin, TokenData
@@ -53,7 +53,7 @@ from database import (
 )
 
 # Common Russian stopwords + filler words, excluded from the keyword-frequency endpoint.
-_STOPWORDS = {
+_STOPWORDS: frozenset[str] = frozenset({
     "и", "в", "не", "на", "я", "что", "он", "с", "как", "а", "то", "все", "она", "так", "его",
     "но", "да", "ты", "к", "у", "же", "вы", "за", "бы", "по", "только", "её", "мне", "было",
     "вот", "от", "меня", "ещё", "нет", "о", "из", "ему", "теперь", "когда", "даже", "ну",
@@ -68,7 +68,7 @@ _STOPWORDS = {
     "эту", "моя", "впрочем", "хорошо", "свою", "этой", "перед", "иногда", "лучше", "чуть",
     "том", "нельзя", "такой", "им", "более", "всегда", "конечно", "всю", "между", "здравствуйте",
     "алло", "спасибо", "пожалуйста",
-}
+})
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -445,20 +445,26 @@ async def duration_buckets(
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
 ) -> list[DurationBucket]:
-    """Distribution of calls across duration ranges. Calls without a known duration are excluded."""
-    base_q = _apply_common_filters(
-        select(func.count(Call.id)).where(Call.duration_seconds.isnot(None)),
+    """Distribution of calls across duration ranges. Calls without a known duration are excluded.
+
+    All buckets are counted in one query via conditional aggregates
+    (COUNT(*) FILTER (WHERE ...)) instead of one round-trip per bucket."""
+    bucket_cols = []
+    for i, (_, lo, hi) in enumerate(_DURATION_BUCKETS):
+        cond = Call.duration_seconds >= lo
+        if hi is not None:
+            cond = and_(cond, Call.duration_seconds < hi)
+        bucket_cols.append(func.count().filter(cond).label(f"b{i}"))
+
+    q = _apply_common_filters(
+        select(*bucket_cols).where(Call.duration_seconds.isnot(None)),
         project_id=project_id, date_from=date_from, date_to=date_to,
     )
-
-    result: list[DurationBucket] = []
-    for label, lo, hi in _DURATION_BUCKETS:
-        q = base_q.where(Call.duration_seconds >= lo)
-        if hi is not None:
-            q = q.where(Call.duration_seconds < hi)
-        count = (await db.execute(q)).scalar() or 0
-        result.append(DurationBucket(label=label, call_count=count))
-    return result
+    row = (await db.execute(q)).one()
+    return [
+        DurationBucket(label=label, call_count=getattr(row, f"b{i}") or 0)
+        for i, (label, _, _) in enumerate(_DURATION_BUCKETS)
+    ]
 
 
 @router.get("/heatmap", response_model=list[HeatmapCell])

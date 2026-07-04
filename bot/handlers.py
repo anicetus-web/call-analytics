@@ -48,7 +48,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import (
     BotCommand, BotCommandScopeChat, CallbackQuery, InlineKeyboardButton,
-    InlineKeyboardMarkup, Message, Video,
+    InlineKeyboardMarkup, Message,
 )
 
 from bot.states import UploadFlow
@@ -474,6 +474,21 @@ async def receive_comment(message: Message, state: FSMContext) -> None:
         filename=data["filename"],
     )
     await message.answer(reply)
+
+
+@router.message(
+    StateFilter(UploadFlow.waiting_comment),
+    F.audio | F.voice | F.video | F.video_note | F.document,
+)
+async def receive_file_while_waiting_comment(message: Message) -> None:
+    """A new file arrived while we're still waiting for the previous file's
+    comment. Without this the media wouldn't match any handler (receive_file
+    is StateFilter(None)) and would be dropped silently — tell the manager to
+    finish the current upload first."""
+    await message.answer(
+        "⏳ Сначала завершите текущую загрузку: напишите комментарий к "
+        "отправленному звонку или нажмите /skip, чтобы пропустить его."
+    )
 
 
 @router.callback_query(F.data == "skip_comment")
