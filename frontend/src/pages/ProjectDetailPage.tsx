@@ -120,7 +120,7 @@ export default function ProjectDetailPage() {
     setExpandedMetric(next)
     if (next !== null && !metricCalls[next]) {
       setMetricCalls(prev => ({ ...prev, [next]: 'loading' }))
-      getTopErrorCalls(next, {})
+      getTopErrorCalls(next, {}, 4)
         .then(calls => setMetricCalls(prev => ({ ...prev, [next]: calls })))
         .catch(() => setMetricCalls(prev => ({ ...prev, [next]: 'error' })))
     }
@@ -336,14 +336,19 @@ export default function ProjectDetailPage() {
                           ) : calls.length === 0 ? (
                             <div className={styles.metricCallsState}>Провалов по этому критерию не найдено</div>
                           ) : (
-                            calls.map(c => (
-                              <Link key={c.call_id} to={`/calls/${c.call_id}`} className={styles.metricCallRow}>
-                                <Avatar name={c.manager_name} size={22} />
-                                <span className={styles.metricCallManager}>{c.manager_name}</span>
-                                <span className={styles.metricCallDate}>{fmtCallDate(c.created_at)}</span>
-                                <span className={styles.metricCallArrow}>→</span>
-                              </Link>
-                            ))
+                            <>
+                              {calls.map(c => (
+                                <Link key={c.call_id} to={`/calls/${c.call_id}`} className={styles.metricCallRow}>
+                                  <Avatar name={c.manager_name} size={22} />
+                                  <span className={styles.metricCallManager}>{c.manager_name}</span>
+                                  <span className={styles.metricCallDate}>{fmtCallDate(c.created_at)}</span>
+                                  <span className={styles.metricCallArrow}>→</span>
+                                </Link>
+                              ))}
+                              {calls.length >= 4 && (
+                                <div className={styles.metricCallsState}>Показаны последние {calls.length}</div>
+                              )}
+                            </>
                           )}
                         </div>
                       )}
@@ -608,10 +613,6 @@ function MembersEditor({ project, onChanged }: { project: Project; onChanged: ()
           </button>
         </form>
       )}
-      {available.length === 0 && allManagers.length > 0 && (
-        <p className={styles.empty}>Все существующие менеджеры уже добавлены в проект</p>
-      )}
-
       <button className={styles.btnAddManager} type="button" onClick={() => setShowCreate(true)}>
         <IconPlus size={16} />
         Добавить менеджера

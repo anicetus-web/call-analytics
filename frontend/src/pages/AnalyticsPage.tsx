@@ -158,7 +158,7 @@ export default function AnalyticsPage() {
         userId: managerId ? Number(managerId) : undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
-      })
+      }, 4)
         .then(calls => setErrorCalls(prev => ({ ...prev, [next]: calls })))
         .catch(() => setErrorCalls(prev => ({ ...prev, [next]: 'error' })))
     }
@@ -173,7 +173,7 @@ export default function AnalyticsPage() {
         userId: managerId ? Number(managerId) : undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
-      })
+      }, 4)
         .then(calls => setSkillCalls(prev => ({ ...prev, [next]: calls })))
         .catch(() => setSkillCalls(prev => ({ ...prev, [next]: 'error' })))
     }
@@ -361,14 +361,19 @@ export default function AnalyticsPage() {
                             ) : calls.length === 0 ? (
                               <div className={styles.errorCallsState}>Звонки не найдены</div>
                             ) : (
-                              calls.map(c => (
-                                <Link key={c.call_id} to={`/calls/${c.call_id}`} className={styles.errorCallRow}>
-                                  <Avatar name={c.manager_name} size={22} />
-                                  <span className={styles.errorCallManager}>{c.manager_name}</span>
-                                  <span className={styles.errorCallDate}>{fmtDate(c.created_at)}</span>
-                                  <span className={styles.errorCallArrow}>→</span>
-                                </Link>
-                              ))
+                              <>
+                                {calls.map(c => (
+                                  <Link key={c.call_id} to={`/calls/${c.call_id}`} className={styles.errorCallRow}>
+                                    <Avatar name={c.manager_name} size={22} />
+                                    <span className={styles.errorCallManager}>{c.manager_name}</span>
+                                    <span className={styles.errorCallDate}>{fmtDate(c.created_at)}</span>
+                                    <span className={styles.errorCallArrow}>→</span>
+                                  </Link>
+                                ))}
+                                {e.fail_count > calls.length && (
+                                  <div className={styles.errorCallsState}>Показаны последние {calls.length} из {e.fail_count}</div>
+                                )}
+                              </>
                             )}
                           </div>
                         )}
@@ -477,14 +482,19 @@ export default function AnalyticsPage() {
                               ) : calls.length === 0 ? (
                                 <div className={styles.errorCallsState}>Провалов по этому критерию не найдено</div>
                               ) : (
-                                calls.map(c => (
-                                  <Link key={c.call_id} to={`/calls/${c.call_id}`} className={styles.errorCallRow}>
-                                    <Avatar name={c.manager_name} size={22} />
-                                    <span className={styles.errorCallManager}>{c.manager_name}</span>
-                                    <span className={styles.errorCallDate}>{fmtDate(c.created_at)}</span>
-                                    <span className={styles.errorCallArrow}>→</span>
-                                  </Link>
-                                ))
+                                <>
+                                  {calls.map(c => (
+                                    <Link key={c.call_id} to={`/calls/${c.call_id}`} className={styles.errorCallRow}>
+                                      <Avatar name={c.manager_name} size={22} />
+                                      <span className={styles.errorCallManager}>{c.manager_name}</span>
+                                      <span className={styles.errorCallDate}>{fmtDate(c.created_at)}</span>
+                                      <span className={styles.errorCallArrow}>→</span>
+                                    </Link>
+                                  ))}
+                                  {calls.length >= 4 && (
+                                    <div className={styles.errorCallsState}>Показаны последние {calls.length}</div>
+                                  )}
+                                </>
                               )}
                             </div>
                           )}
