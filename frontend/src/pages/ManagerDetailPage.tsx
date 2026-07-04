@@ -281,7 +281,7 @@ export default function ManagerDetailPage() {
               </div>
             )}
 
-            <div className={styles.section} style={tab === 'all' ? { gridColumn: '1 / -1' } : undefined}>
+            <div className={styles.section}>
               <h2 className={styles.sectionTitle}>Когда чаще звонит</h2>
               {heatmap.length === 0 ? (
                 <div className={styles.empty}>Нет данных за этот период</div>
@@ -290,7 +290,7 @@ export default function ManagerDetailPage() {
               )}
             </div>
 
-            <div className={styles.section} style={{ gridColumn: '1 / -1' }}>
+            <div className={styles.section} style={tab !== 'all' ? { gridColumn: '1 / -1' } : undefined}>
               <h2 className={styles.sectionTitle}>Последние звонки</h2>
               {calls.length === 0 ? (
                 <div className={styles.empty}>Звонков пока нет</div>

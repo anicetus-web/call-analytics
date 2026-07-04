@@ -22,7 +22,7 @@
 .heatmap {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
   /* Horizontal breathing room so a scaled-up edge cell (hour 0 or 23) has
      room to grow without being clipped by the scroll container's edge —
      that clipping was making the grid look like it "broke" on hover. */
