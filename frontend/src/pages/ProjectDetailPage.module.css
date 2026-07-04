@@ -184,10 +184,21 @@
   margin-bottom: 16px;
 }
 
+.sectionDesc {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin: -10px 0 12px;
+}
+
 .metricTable {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.metricItem {
+  display: flex;
+  flex-direction: column;
 }
 
 .metricRow {
@@ -195,6 +206,27 @@
   grid-template-columns: 1fr 200px 40px 50px;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.metricRowLink {
+  display: grid;
+  grid-template-columns: 1fr 200px 40px 50px;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+.metricRowLink:hover {
+  background: var(--bg-hover);
 }
 
 .metricName {
@@ -203,6 +235,64 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.metricChevron {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 10px;
+  color: var(--text-faint);
+  transition: transform 0.15s;
+}
+.metricChevronOpen {
+  transform: rotate(90deg);
+}
+
+.metricCalls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0 4px 20px;
+  animation: metricCallsIn 0.15s ease;
+}
+@keyframes metricCallsIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.metricCallsState {
+  font-size: 12px;
+  color: var(--text-faint);
+  padding: 4px 0;
+}
+
+.metricCallRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  transition: background 0.15s;
+}
+.metricCallRow:hover {
+  background: var(--bg-hover);
+}
+
+.metricCallManager {
+  font-size: 12px;
+  font-weight: 500;
+  flex: 1;
+}
+
+.metricCallDate {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.metricCallArrow {
+  color: var(--text-faint);
+  font-size: 12px;
 }
 
 .scoreBar {

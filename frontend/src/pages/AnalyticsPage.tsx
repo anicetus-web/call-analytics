@@ -61,6 +61,8 @@ export default function AnalyticsPage() {
 
   const [expandedError, setExpandedError] = useState<number | null>(null)
   const [errorCalls, setErrorCalls] = useState<Record<number, TopErrorCallItem[] | 'loading' | 'error'>>({})
+  const [expandedSkill, setExpandedSkill] = useState<number | null>(null)
+  const [skillCalls, setSkillCalls] = useState<Record<number, TopErrorCallItem[] | 'loading' | 'error'>>({})
 
   const requestIdRef = useRef(0)
 
@@ -143,6 +145,8 @@ export default function AnalyticsPage() {
   useEffect(() => {
     setExpandedError(null)
     setErrorCalls({})
+    setExpandedSkill(null)
+    setSkillCalls({})
   }, [projectId, managerId, dateFrom, dateTo])
 
   function toggleError(metricItemId: number) {
@@ -157,6 +161,21 @@ export default function AnalyticsPage() {
       })
         .then(calls => setErrorCalls(prev => ({ ...prev, [next]: calls })))
         .catch(() => setErrorCalls(prev => ({ ...prev, [next]: 'error' })))
+    }
+  }
+
+  function toggleSkill(metricItemId: number) {
+    const next = expandedSkill === metricItemId ? null : metricItemId
+    setExpandedSkill(next)
+    if (next !== null && !skillCalls[next]) {
+      setSkillCalls(prev => ({ ...prev, [next]: 'loading' }))
+      getTopErrorCalls(next, {
+        userId: managerId ? Number(managerId) : undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      })
+        .then(calls => setSkillCalls(prev => ({ ...prev, [next]: calls })))
+        .catch(() => setSkillCalls(prev => ({ ...prev, [next]: 'error' })))
     }
   }
 
@@ -428,16 +447,50 @@ export default function AnalyticsPage() {
                     </RadarChart>
                   </ResponsiveContainer>
                   <div className={styles.metricTable}>
-                    {skills.map(m => (
-                      <div key={m.metric_item_id} className={styles.metricRow}>
-                        <span className={styles.metricName}>{m.name}</span>
-                        <div className={styles.scoreBar}>
-                          <div className={styles.scoreBarFill} style={{ width: `${m.avg_score * 100}%` }} />
+                    {skills.map(m => {
+                      const isOpen = expandedSkill === m.metric_item_id
+                      const calls = skillCalls[m.metric_item_id]
+                      return (
+                        <div key={m.metric_item_id} className={styles.errorItem}>
+                          <button
+                            type="button"
+                            className={styles.metricRow}
+                            onClick={() => toggleSkill(m.metric_item_id)}
+                            aria-expanded={isOpen}
+                          >
+                            <span className={styles.metricName}>
+                              <span className={`${styles.errorChevron} ${isOpen ? styles.errorChevronOpen : ''}`}>▸</span>
+                              {m.name}
+                            </span>
+                            <div className={styles.scoreBar}>
+                              <div className={styles.scoreBarFill} style={{ width: `${m.avg_score * 100}%` }} />
+                            </div>
+                            <span className={styles.scoreVal}>{fmtPct(m.avg_score)}</span>
+                            <span className={styles.callCnt}>{m.call_count} зв.</span>
+                          </button>
+                          {isOpen && (
+                            <div className={styles.errorCalls}>
+                              {calls === 'loading' || calls === undefined ? (
+                                <div className={styles.errorCallsState}>Загрузка...</div>
+                              ) : calls === 'error' ? (
+                                <div className={styles.errorCallsState}>Не удалось загрузить звонки</div>
+                              ) : calls.length === 0 ? (
+                                <div className={styles.errorCallsState}>Провалов по этому критерию не найдено</div>
+                              ) : (
+                                calls.map(c => (
+                                  <Link key={c.call_id} to={`/calls/${c.call_id}`} className={styles.errorCallRow}>
+                                    <Avatar name={c.manager_name} size={22} />
+                                    <span className={styles.errorCallManager}>{c.manager_name}</span>
+                                    <span className={styles.errorCallDate}>{fmtDate(c.created_at)}</span>
+                                    <span className={styles.errorCallArrow}>→</span>
+                                  </Link>
+                                ))
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <span className={styles.scoreVal}>{fmtPct(m.avg_score)}</span>
-                        <span className={styles.callCnt}>{m.call_count} зв.</span>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}

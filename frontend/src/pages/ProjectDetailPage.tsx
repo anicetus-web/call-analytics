@@ -2,12 +2,12 @@ import { useEffect, useState, useCallback, FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   getProject, getCalls, getMetricSummary, getManagerSummary, getTimeline,
-  getManagerScoreTimeline,
+  getManagerScoreTimeline, getTopErrorCalls,
   updateProject, archiveProject, addMember, removeMember, getManagers,
   getMetricGroups, createMetricGroup, updateMetricGroup, deleteMetricGroup,
   createMetricItem, updateMetricItem, deleteMetricItem,
   Project, CallListItem, MetricSummary, ManagerSummary, TimelinePoint,
-  Manager, MetricGroup, MetricGroupType,
+  Manager, MetricGroup, MetricGroupType, TopErrorCallItem,
 } from '../api'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Modal from '../components/Modal'
@@ -89,6 +89,10 @@ function fmtDuration(sec: number | null): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+function fmtCallDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const projectId = Number(id)
@@ -107,6 +111,20 @@ export default function ProjectDetailPage() {
   const [timelineLoading, setTimelineLoading] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [expandedMetric, setExpandedMetric] = useState<number | null>(null)
+  const [metricCalls, setMetricCalls] = useState<Record<number, TopErrorCallItem[] | 'loading' | 'error'>>({})
+
+  function toggleMetric(metricItemId: number) {
+    const next = expandedMetric === metricItemId ? null : metricItemId
+    setExpandedMetric(next)
+    if (next !== null && !metricCalls[next]) {
+      setMetricCalls(prev => ({ ...prev, [next]: 'loading' }))
+      getTopErrorCalls(next, {})
+        .then(calls => setMetricCalls(prev => ({ ...prev, [next]: calls })))
+        .catch(() => setMetricCalls(prev => ({ ...prev, [next]: 'error' })))
+    }
+  }
 
   const loadCalls = useCallback(async (off: number) => {
     const data = await getCalls({ project_id: projectId, limit: PAGE_SIZE, offset: off })
@@ -283,20 +301,55 @@ export default function ProjectDetailPage() {
           {metrics.length > 0 && (
             <div className={managers.length === 0 ? `${styles.section} ${styles.sectionWide}` : styles.section}>
               <h2 className={styles.sectionTitle}>По критериям</h2>
+              <p className={styles.sectionDesc}>Нажмите на критерий, чтобы увидеть конкретные звонки, где он не выполнен</p>
               <div className={styles.metricTable}>
-                {metrics.map(m => (
-                  <div key={m.metric_item_id} className={styles.metricRow}>
-                    <span className={styles.metricName}>{m.name}</span>
-                    <div className={styles.scoreBar}>
-                      <div
-                        className={styles.scoreBarFill}
-                        style={{ width: `${m.avg_score * 100}%` }}
-                      />
+                {metrics.map(m => {
+                  const isOpen = expandedMetric === m.metric_item_id
+                  const calls = metricCalls[m.metric_item_id]
+                  return (
+                    <div key={m.metric_item_id} className={styles.metricItem}>
+                      <button
+                        type="button"
+                        className={styles.metricRow}
+                        onClick={() => toggleMetric(m.metric_item_id)}
+                        aria-expanded={isOpen}
+                      >
+                        <span className={styles.metricName}>
+                          <span className={`${styles.metricChevron} ${isOpen ? styles.metricChevronOpen : ''}`}>▸</span>
+                          {m.name}
+                        </span>
+                        <div className={styles.scoreBar}>
+                          <div
+                            className={styles.scoreBarFill}
+                            style={{ width: `${m.avg_score * 100}%` }}
+                          />
+                        </div>
+                        <span className={styles.scoreVal}>{(m.avg_score * 100).toFixed(0)}%</span>
+                        <span className={styles.callCnt}>{m.call_count} зв.</span>
+                      </button>
+                      {isOpen && (
+                        <div className={styles.metricCalls}>
+                          {calls === 'loading' || calls === undefined ? (
+                            <div className={styles.metricCallsState}>Загрузка...</div>
+                          ) : calls === 'error' ? (
+                            <div className={styles.metricCallsState}>Не удалось загрузить звонки</div>
+                          ) : calls.length === 0 ? (
+                            <div className={styles.metricCallsState}>Провалов по этому критерию не найдено</div>
+                          ) : (
+                            calls.map(c => (
+                              <Link key={c.call_id} to={`/calls/${c.call_id}`} className={styles.metricCallRow}>
+                                <Avatar name={c.manager_name} size={22} />
+                                <span className={styles.metricCallManager}>{c.manager_name}</span>
+                                <span className={styles.metricCallDate}>{fmtCallDate(c.created_at)}</span>
+                                <span className={styles.metricCallArrow}>→</span>
+                              </Link>
+                            ))
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <span className={styles.scoreVal}>{(m.avg_score * 100).toFixed(0)}%</span>
-                    <span className={styles.callCnt}>{m.call_count} зв.</span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
@@ -306,7 +359,7 @@ export default function ProjectDetailPage() {
               <h2 className={styles.sectionTitle}>По менеджерам</h2>
               <div className={styles.metricTable}>
                 {managers.map(m => (
-                  <div key={m.user_id} className={styles.metricRow}>
+                  <Link to={`/managers/${m.user_id}`} key={m.user_id} className={styles.metricRowLink}>
                     <span className={styles.metricName}>{m.name}</span>
                     <div className={styles.scoreBar}>
                       <div
@@ -316,7 +369,7 @@ export default function ProjectDetailPage() {
                     </div>
                     <span className={styles.scoreVal}>{(m.avg_score * 100).toFixed(0)}%</span>
                     <span className={styles.callCnt}>{m.call_count} зв.</span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>
