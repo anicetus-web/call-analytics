@@ -204,7 +204,11 @@
 
 .metricGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  /* auto-fit (not auto-fill) — auto-fill reserves empty tracks for columns
+     that could fit but have no content, leaving the real cards bunched on
+     the left; auto-fit collapses those empty tracks so the 1fr sizing
+     redistributes the freed space across the actual cards instead. */
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 12px;
 }
 
