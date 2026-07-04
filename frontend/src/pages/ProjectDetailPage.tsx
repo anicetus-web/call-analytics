@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   getProject, getCalls, getMetricSummary, getManagerSummary, getTimeline,
   getManagerScoreTimeline, getTopErrorCalls,
-  updateProject, archiveProject, addMember, removeMember, getManagers,
+  updateProject, archiveProject, addMember, removeMember, getManagers, createManager,
   getMetricGroups, createMetricGroup, updateMetricGroup, deleteMetricGroup,
   createMetricItem, updateMetricItem, deleteMetricItem,
   Project, CallListItem, MetricSummary, ManagerSummary, TimelinePoint,
@@ -476,10 +476,75 @@ function ProjectInfoForm({
   )
 }
 
+function CreateManagerModal({ projectId, onClose, onDone }: { projectId: number; onClose: () => void; onDone: () => void }) {
+  const [name, setName] = useState('')
+  const [telegramId, setTelegramId] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    const tgId = Number(telegramId)
+    if (!Number.isInteger(tgId) || tgId <= 0) {
+      setError('Telegram ID должен быть положительным числом')
+      return
+    }
+    setSaving(true)
+    let createdManagerId: number | null = null
+    try {
+      const manager = await createManager({ name, telegram_id: tgId })
+      createdManagerId = manager.id
+      // Second step can fail independently of the first — the manager already
+      // exists at this point, so a generic "failed to create" message would be
+      // wrong and retrying would just hit a 409 on the duplicate Telegram ID.
+      await addMember(projectId, manager.id)
+      onDone()
+    } catch {
+      if (createdManagerId !== null) {
+        setError('Менеджер создан, но не удалось добавить его в проект. Откройте страницу «Менеджеры» — он там уже есть, добавьте его в проект оттуда.')
+      } else {
+        setError('Не удалось создать менеджера. Возможно, такой Telegram ID уже используется.')
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal title="Добавить менеджера" onClose={onClose}>
+      <form className={formStyles.form} onSubmit={handleSubmit}>
+        {error && <div className={formStyles.error}>{error}</div>}
+        <label className={formStyles.label}>
+          Имя
+          <input className={formStyles.input} value={name} onChange={e => setName(e.target.value)} required autoFocus />
+        </label>
+        <label className={formStyles.label}>
+          Telegram ID
+          <input
+            className={formStyles.input}
+            type="number"
+            value={telegramId}
+            onChange={e => setTelegramId(e.target.value)}
+            required
+          />
+        </label>
+        <div className={formStyles.actions}>
+          <button className={formStyles.btnPrimary} type="submit" disabled={saving}>
+            {saving ? 'Создание...' : 'Создать и добавить в проект'}
+          </button>
+          <button className={formStyles.btnSecondary} type="button" onClick={onClose}>Отмена</button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
 function MembersEditor({ project, onChanged }: { project: Project; onChanged: () => void }) {
   const [allManagers, setAllManagers] = useState<Manager[]>([])
   const [selected, setSelected] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
+  const [showCreate, setShowCreate] = useState(false)
 
   useEffect(() => {
     getManagers()
@@ -533,24 +598,31 @@ function MembersEditor({ project, onChanged }: { project: Project; onChanged: ()
       {available.length > 0 && (
         <form className={styles.inlineForm} onSubmit={handleAdd}>
           <select className={formStyles.select} style={{ flex: 1 }} value={selected} onChange={e => setSelected(e.target.value)}>
-            <option value="">Выбрать менеджера…</option>
+            <option value="">Выбрать существующего менеджера…</option>
             {available.map(m => (
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
           </select>
-          <button className={styles.btnAddManager} type="submit" disabled={!selected}>
-            <IconPlus size={16} />
-            Добавить менеджера
+          <button className={formStyles.btnSecondary} type="submit" disabled={!selected}>
+            Добавить в проект
           </button>
         </form>
       )}
       {available.length === 0 && allManagers.length > 0 && (
-        <p className={styles.empty}>Все менеджеры уже добавлены в проект</p>
+        <p className={styles.empty}>Все существующие менеджеры уже добавлены в проект</p>
       )}
-      {allManagers.length === 0 && (
-        <p className={styles.empty}>
-          Менеджеров ещё нет — создайте их на странице «Менеджеры»
-        </p>
+
+      <button className={styles.btnAddManager} type="button" onClick={() => setShowCreate(true)}>
+        <IconPlus size={16} />
+        Добавить менеджера
+      </button>
+
+      {showCreate && (
+        <CreateManagerModal
+          projectId={project.id}
+          onClose={() => setShowCreate(false)}
+          onDone={() => { setShowCreate(false); onChanged() }}
+        />
       )}
     </div>
   )

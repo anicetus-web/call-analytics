@@ -160,6 +160,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  margin-top: 12px;
   background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple), var(--accent-blue));
   background-size: 200% 200%;
   color: #fff;
