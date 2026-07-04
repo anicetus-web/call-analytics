@@ -191,12 +191,17 @@
   margin: -10px 0 12px;
 }
 
-/* Equal-sized cards laid out in an auto-fit grid that fills the whole
-   block width, instead of a single vertical list. */
+/* Equal-sized cards in a single row filling the block width. auto-flow
+   column keeps everything on one line; each card is ≥120px and grows to
+   share the width evenly, and the row scrolls horizontally only if there
+   are too many cards to fit at that minimum. */
 .metricGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(120px, 1fr);
   gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .metricCard {
