@@ -350,20 +350,24 @@ export default function ProjectDetailPage() {
             )}
           </div>
 
-          {metrics.length > 0 && (
-            <div className={managers.length === 0 ? `${styles.section} ${styles.sectionWide}` : styles.section}>
-              <h2 className={styles.sectionTitle}>По критериям</h2>
-              <p className={styles.sectionDesc}>Нажмите на критерий, чтобы увидеть конкретные звонки, где он не выполнен</p>
-              <div className={styles.metricTable}>
-                {metrics.map(m => {
-                  const isOpen = expandedMetric === m.metric_item_id
-                  const calls = metricCalls[m.metric_item_id]
-                  const pct = Math.round(m.avg_score * 100)
-                  return (
-                    <div key={m.metric_item_id} className={styles.metricItem}>
+          {metrics.length > 0 && (() => {
+            const openMetric = expandedMetric !== null
+              ? metrics.find(m => m.metric_item_id === expandedMetric) ?? null
+              : null
+            const openCalls = expandedMetric !== null ? metricCalls[expandedMetric] : undefined
+            return (
+              <div className={managers.length === 0 ? `${styles.section} ${styles.sectionWide}` : styles.section}>
+                <h2 className={styles.sectionTitle}>По критериям</h2>
+                <p className={styles.sectionDesc}>Нажмите на критерий, чтобы увидеть конкретные звонки, где он не выполнен</p>
+                <div className={styles.metricGrid}>
+                  {metrics.map(m => {
+                    const isOpen = expandedMetric === m.metric_item_id
+                    const pct = Math.round(m.avg_score * 100)
+                    return (
                       <button
+                        key={m.metric_item_id}
                         type="button"
-                        className={styles.metricRow}
+                        className={`${styles.metricCard} ${isOpen ? styles.metricCardActive : ''}`}
                         onClick={() => toggleMetric(m.metric_item_id)}
                         aria-expanded={isOpen}
                       >
@@ -374,47 +378,50 @@ export default function ProjectDetailPage() {
                           />
                           <span className={styles.scoreRingValue}>{pct}%</span>
                         </div>
-                        <div className={styles.metricInfo}>
-                          <span className={styles.metricName}>
-                            <span className={`${styles.metricChevron} ${isOpen ? styles.metricChevronOpen : ''}`}>▸</span>
-                            {m.name}
-                          </span>
-                          <span className={styles.callCnt}>{m.call_count} зв.</span>
-                        </div>
+                        <span className={styles.metricCardName}>{m.name}</span>
+                        <span className={styles.callCnt}>{m.call_count} зв.</span>
                       </button>
-                      {isOpen && (
-                        <div className={styles.metricCalls}>
-                          {calls === 'loading' || calls === undefined ? (
-                            <DrillDownSkeleton />
-                          ) : calls === 'error' ? (
-                            <div className={styles.metricCallsState}>Не удалось загрузить звонки</div>
-                          ) : calls.length === 0 ? (
-                            <div className={styles.metricCallsState}>Провалов по этому критерию не найдено</div>
-                          ) : (
-                            <>
-                              {calls.map(c => <DrillDownCallRow key={c.call_id} call={c} />)}
-                              {calls.length >= 4 && (
-                                <div className={styles.metricCallsState}>Показаны последние {calls.length}</div>
-                              )}
-                            </>
+                    )
+                  })}
+                </div>
+                {openMetric && (
+                  <div className={styles.drillPanel}>
+                    <div className={styles.drillPanelTitle}>
+                      Звонки, где не выполнен критерий «{openMetric.name}»
+                    </div>
+                    <div className={styles.metricCalls}>
+                      {openCalls === 'loading' || openCalls === undefined ? (
+                        <DrillDownSkeleton />
+                      ) : openCalls === 'error' ? (
+                        <div className={styles.metricCallsState}>Не удалось загрузить звонки</div>
+                      ) : openCalls.length === 0 ? (
+                        <div className={styles.metricCallsState}>Провалов по этому критерию не найдено</div>
+                      ) : (
+                        <>
+                          {openCalls.map(c => <DrillDownCallRow key={c.call_id} call={c} />)}
+                          {openCalls.length >= 4 && (
+                            <div className={styles.metricCallsState}>Показаны последние {openCalls.length}</div>
                           )}
-                        </div>
+                        </>
                       )}
                     </div>
-                  )
-                })}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {managers.length > 0 && (
             <div className={metrics.length === 0 ? `${styles.section} ${styles.sectionWide}` : styles.section}>
-              <h2 className={styles.sectionTitle}>По менеджерам</h2>
-              <div className={styles.metricTable}>
+              <div className={styles.sectionHead}>
+                <h2 className={styles.sectionTitle}>По менеджерам</h2>
+                <Link to="/managers" className={styles.viewAllLink}>Все менеджеры →</Link>
+              </div>
+              <div className={styles.metricGrid}>
                 {managers.map(m => {
                   const pct = Math.round(m.avg_score * 100)
                   return (
-                    <Link to={`/managers/${m.user_id}`} key={m.user_id} className={styles.metricRowLink}>
+                    <Link to={`/managers/${m.user_id}`} key={m.user_id} className={styles.metricCard}>
                       <div className={styles.scoreRingWrap}>
                         <div
                           className={styles.scoreRing}
@@ -422,10 +429,8 @@ export default function ProjectDetailPage() {
                         />
                         <span className={styles.scoreRingValue}>{pct}%</span>
                       </div>
-                      <div className={styles.metricInfo}>
-                        <span className={styles.metricName}>{m.name}</span>
-                        <span className={styles.callCnt}>{m.call_count} зв.</span>
-                      </div>
+                      <span className={styles.metricCardName}>{m.name}</span>
+                      <span className={styles.callCnt}>{m.call_count} зв.</span>
                     </Link>
                   )
                 })}
