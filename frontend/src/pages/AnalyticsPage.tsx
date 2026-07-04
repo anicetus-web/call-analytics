@@ -5,7 +5,7 @@ import {
   getDurationBuckets, getMetricSummary, getProjects, getManagers,
   Kpi, TopErrorItem, TopErrorCallItem, QualityDistribution, ManagerTrendItem, KeywordItem, DurationBucket, MetricSummary, Project, Manager,
 } from '../api'
-import { PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { IconTarget, IconTrend, IconAlert, IconPhoneWave } from '../components/icons'
 import Avatar from '../components/Avatar'
 import styles from './AnalyticsPage.module.css'
@@ -520,15 +520,6 @@ export default function AnalyticsPage() {
                 <div className={styles.empty}>Нет оценённых звонков за этот период</div>
               ) : (
                 <div className={styles.skillsRow}>
-                  <ResponsiveContainer width="100%" height={170}>
-                    <RadarChart data={skills.map(s => ({ name: s.name, value: Math.round(s.avg_score * 100) }))}>
-                      <PolarGrid stroke="var(--border)" />
-                      <PolarAngleAxis dataKey="name" tick={{ fontSize: 9, fill: 'var(--text-muted)' }} />
-                      <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 8, fill: 'var(--text-faint)' }} />
-                      <Radar dataKey="value" stroke="#ec4899" fill="#ec4899" fillOpacity={0.35} />
-                      <Tooltip {...chartTooltipStyle} formatter={(v: number) => `${v}%`} />
-                    </RadarChart>
-                  </ResponsiveContainer>
                   <div className={styles.metricTable}>
                     {skills.map(m => {
                       const isOpen = expandedSkill === m.metric_item_id
