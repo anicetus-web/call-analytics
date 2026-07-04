@@ -12,6 +12,12 @@ import styles from './AnalyticsPage.module.css'
 
 const QUALITY_COLORS = { high: '#34d399', medium: '#eab308', low: '#fb7185' }
 
+function scoreTierColor(avgScore: number): string {
+  if (avgScore >= 0.8) return QUALITY_COLORS.high
+  if (avgScore >= 0.5) return QUALITY_COLORS.medium
+  return QUALITY_COLORS.low
+}
+
 const chartTooltipStyle = {
   contentStyle: {
     background: 'var(--bg-elevated)',
@@ -527,6 +533,7 @@ export default function AnalyticsPage() {
                     {skills.map(m => {
                       const isOpen = expandedSkill === m.metric_item_id
                       const calls = skillCalls[m.metric_item_id]
+                      const pct = Math.round(m.avg_score * 100)
                       return (
                         <div key={m.metric_item_id} className={styles.errorItem}>
                           <button
@@ -535,15 +542,20 @@ export default function AnalyticsPage() {
                             onClick={() => toggleSkill(m.metric_item_id)}
                             aria-expanded={isOpen}
                           >
-                            <span className={styles.metricName}>
-                              <span className={`${styles.errorChevron} ${isOpen ? styles.errorChevronOpen : ''}`}>▸</span>
-                              {m.name}
-                            </span>
-                            <div className={styles.scoreBar}>
-                              <div className={styles.scoreBarFill} style={{ width: `${m.avg_score * 100}%` }} />
+                            <div className={styles.scoreRingWrap}>
+                              <div
+                                className={styles.scoreRing}
+                                style={{ background: `conic-gradient(${scoreTierColor(m.avg_score)} ${pct * 3.6}deg, var(--bg-hover) 0deg)` }}
+                              />
+                              <span className={styles.scoreRingValue}>{pct}%</span>
                             </div>
-                            <span className={styles.scoreVal}>{fmtPct(m.avg_score)}</span>
-                            <span className={styles.callCnt}>{m.call_count} зв.</span>
+                            <div className={styles.metricInfo}>
+                              <span className={styles.metricName}>
+                                <span className={`${styles.errorChevron} ${isOpen ? styles.errorChevronOpen : ''}`}>▸</span>
+                                {m.name}
+                              </span>
+                              <span className={styles.callCnt}>{m.call_count} зв.</span>
+                            </div>
                           </button>
                           {isOpen && (
                             <div className={styles.errorCalls}>

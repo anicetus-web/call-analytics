@@ -203,26 +203,30 @@
 }
 
 .metricRow {
-  display: grid;
-  grid-template-columns: 1fr 200px 40px 50px;
+  display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  padding: 0;
+  padding: 6px;
+  margin: -6px;
   background: none;
   border: none;
+  border-radius: var(--radius-sm);
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition: background 0.15s;
+}
+.metricRow:hover {
+  background: var(--bg-hover);
 }
 
 .metricRowLink {
-  display: grid;
-  grid-template-columns: 1fr 200px 40px 50px;
+  display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 4px 6px;
-  margin: -4px -6px;
+  gap: 14px;
+  padding: 6px;
+  margin: -6px;
   border-radius: var(--radius-sm);
   transition: background 0.15s;
 }
@@ -230,12 +234,48 @@
   background: var(--bg-hover);
 }
 
+.scoreRingWrap {
+  width: 44px;
+  height: 44px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Masked ring (not a background-color "hole") so it renders correctly
+   regardless of whatever the row's own background is doing — e.g. on
+   hover, where a hole punched to match a fixed background color would
+   mismatch as soon as the row's background changes. */
+.scoreRing {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 5px));
+}
+
+.scoreRingValue {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.metricInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
 .metricName {
   font-size: 13px;
   color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
 }
 
 .metricChevron {
@@ -365,27 +405,6 @@
 @keyframes skeletonPulse {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
-}
-
-.scoreBar {
-  height: 8px;
-  background: var(--bg-hover);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.scoreBarFill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent-pink), var(--accent-blue));
-  border-radius: 4px;
-  transition: width 0.3s;
-}
-
-.scoreVal {
-  font-size: 13px;
-  font-weight: 600;
-  text-align: right;
-  color: var(--text);
 }
 
 .callCnt {

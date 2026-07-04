@@ -200,13 +200,12 @@
 }
 
 .metricRow {
-  display: grid;
-  grid-template-columns: 80px 1fr 32px 40px;
+  display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 12px;
   width: 100%;
-  padding: 4px 6px;
-  margin: -4px -6px;
+  padding: 6px;
+  margin: -6px;
   background: none;
   border: none;
   border-radius: var(--radius-sm);
@@ -219,38 +218,53 @@
   background: var(--bg-hover);
 }
 
+.scoreRingWrap {
+  width: 38px;
+  height: 38px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Masked ring (not a background-color "hole") so it renders correctly
+   regardless of whatever the row's own background is doing — e.g. on
+   hover, where a hole punched to match a fixed background color would
+   mismatch as soon as the row's background changes. */
+.scoreRing {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px));
+}
+
+.scoreRingValue {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.metricInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
 .metricName {
   font-size: 13px;
   color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.scoreBar {
-  height: 6px;
-  background: var(--bg-hover);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.scoreBarFill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent-pink), var(--accent-blue));
-  border-radius: 3px;
-}
-
-.scoreVal {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-  text-align: right;
+  line-height: 1.35;
 }
 
 .callCnt {
   font-size: 11px;
   color: var(--text-faint);
-  text-align: right;
   white-space: nowrap;
 }
 

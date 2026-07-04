@@ -93,6 +93,14 @@ function fmtCallDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
+// Matches the high/medium/low palette used for quality distribution and
+// the manager page's criteria rings, so a score reads the same everywhere.
+function scoreTierColor(avgScore: number): string {
+  if (avgScore >= 0.8) return '#34d399'
+  if (avgScore >= 0.5) return '#eab308'
+  return '#fb7185'
+}
+
 // Scores are one of {0, 0.5} in this drill-down (the endpoint only ever
 // returns calls that failed, i.e. score < 1.0) — a plain 0/50 percentage
 // on its own doesn't say whether that's "missed entirely" or "partial
@@ -350,6 +358,7 @@ export default function ProjectDetailPage() {
                 {metrics.map(m => {
                   const isOpen = expandedMetric === m.metric_item_id
                   const calls = metricCalls[m.metric_item_id]
+                  const pct = Math.round(m.avg_score * 100)
                   return (
                     <div key={m.metric_item_id} className={styles.metricItem}>
                       <button
@@ -358,18 +367,20 @@ export default function ProjectDetailPage() {
                         onClick={() => toggleMetric(m.metric_item_id)}
                         aria-expanded={isOpen}
                       >
-                        <span className={styles.metricName}>
-                          <span className={`${styles.metricChevron} ${isOpen ? styles.metricChevronOpen : ''}`}>▸</span>
-                          {m.name}
-                        </span>
-                        <div className={styles.scoreBar}>
+                        <div className={styles.scoreRingWrap}>
                           <div
-                            className={styles.scoreBarFill}
-                            style={{ width: `${m.avg_score * 100}%` }}
+                            className={styles.scoreRing}
+                            style={{ background: `conic-gradient(${scoreTierColor(m.avg_score)} ${pct * 3.6}deg, var(--bg-hover) 0deg)` }}
                           />
+                          <span className={styles.scoreRingValue}>{pct}%</span>
                         </div>
-                        <span className={styles.scoreVal}>{(m.avg_score * 100).toFixed(0)}%</span>
-                        <span className={styles.callCnt}>{m.call_count} зв.</span>
+                        <div className={styles.metricInfo}>
+                          <span className={styles.metricName}>
+                            <span className={`${styles.metricChevron} ${isOpen ? styles.metricChevronOpen : ''}`}>▸</span>
+                            {m.name}
+                          </span>
+                          <span className={styles.callCnt}>{m.call_count} зв.</span>
+                        </div>
                       </button>
                       {isOpen && (
                         <div className={styles.metricCalls}>
@@ -400,19 +411,24 @@ export default function ProjectDetailPage() {
             <div className={metrics.length === 0 ? `${styles.section} ${styles.sectionWide}` : styles.section}>
               <h2 className={styles.sectionTitle}>По менеджерам</h2>
               <div className={styles.metricTable}>
-                {managers.map(m => (
-                  <Link to={`/managers/${m.user_id}`} key={m.user_id} className={styles.metricRowLink}>
-                    <span className={styles.metricName}>{m.name}</span>
-                    <div className={styles.scoreBar}>
-                      <div
-                        className={styles.scoreBarFill}
-                        style={{ width: `${m.avg_score * 100}%` }}
-                      />
-                    </div>
-                    <span className={styles.scoreVal}>{(m.avg_score * 100).toFixed(0)}%</span>
-                    <span className={styles.callCnt}>{m.call_count} зв.</span>
-                  </Link>
-                ))}
+                {managers.map(m => {
+                  const pct = Math.round(m.avg_score * 100)
+                  return (
+                    <Link to={`/managers/${m.user_id}`} key={m.user_id} className={styles.metricRowLink}>
+                      <div className={styles.scoreRingWrap}>
+                        <div
+                          className={styles.scoreRing}
+                          style={{ background: `conic-gradient(${scoreTierColor(m.avg_score)} ${pct * 3.6}deg, var(--bg-hover) 0deg)` }}
+                        />
+                        <span className={styles.scoreRingValue}>{pct}%</span>
+                      </div>
+                      <div className={styles.metricInfo}>
+                        <span className={styles.metricName}>{m.name}</span>
+                        <span className={styles.callCnt}>{m.call_count} зв.</span>
+                      </div>
+                    </Link>
+                  )
+                })}
               </div>
             </div>
           )}
