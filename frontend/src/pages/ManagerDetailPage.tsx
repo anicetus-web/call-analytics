@@ -34,6 +34,14 @@ function fmtDuration(sec: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+// Matches the high/medium/low palette already used for quality distribution
+// elsewhere in the app, so a score reads the same way everywhere.
+function scoreTierColor(avgScore: number): string {
+  if (avgScore >= 0.8) return '#34d399'
+  if (avgScore >= 0.5) return '#eab308'
+  return '#fb7185'
+}
+
 function fmtRelative(iso: string | null): string {
   if (!iso) return 'ещё не было'
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
@@ -265,17 +273,23 @@ export default function ManagerDetailPage() {
                 {metrics.length === 0 ? (
                   <div className={styles.empty}>Нет оценённых звонков за этот период</div>
                 ) : (
-                  <div className={styles.metricTable}>
-                    {metrics.map(m => (
-                      <div key={m.metric_item_id} className={styles.metricRow}>
-                        <span className={styles.metricName}>{m.name}</span>
-                        <div className={styles.scoreBar}>
-                          <div className={styles.scoreBarFill} style={{ width: `${m.avg_score * 100}%` }} />
+                  <div className={styles.metricGrid}>
+                    {metrics.map(m => {
+                      const pct = Math.round(m.avg_score * 100)
+                      const color = scoreTierColor(m.avg_score)
+                      return (
+                        <div key={m.metric_item_id} className={styles.metricCard}>
+                          <div
+                            className={styles.metricRing}
+                            style={{ background: `conic-gradient(${color} ${pct * 3.6}deg, var(--bg-elevated) 0deg)` }}
+                          >
+                            <span className={styles.metricRingValue}>{pct}%</span>
+                          </div>
+                          <span className={styles.metricCardName}>{m.name}</span>
+                          <span className={styles.metricCardCnt}>{m.call_count} зв.</span>
                         </div>
-                        <span className={styles.scoreVal}>{(m.avg_score * 100).toFixed(0)}%</span>
-                        <span className={styles.callCnt}>{m.call_count} зв.</span>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
