@@ -382,30 +382,101 @@
 .errorCallRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: 10px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
+  background: var(--bg-hover);
   color: var(--text);
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.15s;
 }
 .errorCallRow:hover {
   background: var(--bg-elevated);
+  transform: translateX(2px);
+}
+
+.errorCallMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .errorCallManager {
   font-size: 12px;
-  font-weight: 500;
-  flex: 1;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.errorCallDate {
+.errorCallMeta {
   font-size: 11px;
   color: var(--text-muted);
+}
+
+.errorCallBadge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.badgeFail {
+  background: rgba(251, 113, 133, 0.15);
+  color: #fb7185;
+}
+
+.badgePartial {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
 }
 
 .errorCallArrow {
   color: var(--text-faint);
   font-size: 12px;
+}
+
+.errorCallSkeleton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+}
+
+.skeletonAvatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+  animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+.skeletonLine {
+  display: block;
+  height: 9px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+.skeletonBadge {
+  width: 64px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+  animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
 .errorTop {

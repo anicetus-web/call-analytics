@@ -30,6 +30,57 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
+function fmtCallDuration(sec: number | null): string {
+  if (!sec) return '—'
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+// Scores are one of {0, 0.5} in this drill-down (the endpoint only ever
+// returns calls that failed, i.e. score < 1.0) — a plain 0/50 percentage
+// on its own doesn't say whether that's "missed entirely" or "partial
+// credit", so spell it out.
+function scoreBadge(score: number): { text: string; className: string } {
+  return score === 0
+    ? { text: 'Не выполнено', className: styles.badgeFail }
+    : { text: 'Частично · 50%', className: styles.badgePartial }
+}
+
+function DrillDownCallRow({ call }: { call: TopErrorCallItem }) {
+  const badge = scoreBadge(call.score)
+  return (
+    <Link to={`/calls/${call.call_id}`} className={styles.errorCallRow}>
+      <Avatar name={call.manager_name} size={26} />
+      <div className={styles.errorCallMain}>
+        <span className={styles.errorCallManager}>{call.manager_name}</span>
+        <span className={styles.errorCallMeta}>
+          {fmtDate(call.created_at)} · {fmtCallDuration(call.duration_seconds)}
+        </span>
+      </div>
+      <span className={`${styles.errorCallBadge} ${badge.className}`}>{badge.text}</span>
+      <span className={styles.errorCallArrow}>→</span>
+    </Link>
+  )
+}
+
+function DrillDownSkeleton() {
+  return (
+    <>
+      {[0, 1].map(i => (
+        <div key={i} className={styles.errorCallSkeleton}>
+          <span className={styles.skeletonAvatar} />
+          <div className={styles.errorCallMain}>
+            <span className={styles.skeletonLine} style={{ width: '55%' }} />
+            <span className={styles.skeletonLine} style={{ width: '35%' }} />
+          </div>
+          <span className={styles.skeletonBadge} />
+        </div>
+      ))}
+    </>
+  )
+}
+
 // v is a fraction-of-1 delta (e.g. 0.04 = "+4 percentage points"), matching how avg_score itself is stored.
 function fmtDelta(v: number | null): { text: string; className: string } | null {
   if (v === null) return null
@@ -355,21 +406,14 @@ export default function AnalyticsPage() {
                         {isOpen && (
                           <div className={styles.errorCalls}>
                             {calls === 'loading' || calls === undefined ? (
-                              <div className={styles.errorCallsState}>Загрузка...</div>
+                              <DrillDownSkeleton />
                             ) : calls === 'error' ? (
                               <div className={styles.errorCallsState}>Не удалось загрузить звонки</div>
                             ) : calls.length === 0 ? (
                               <div className={styles.errorCallsState}>Звонки не найдены</div>
                             ) : (
                               <>
-                                {calls.map(c => (
-                                  <Link key={c.call_id} to={`/calls/${c.call_id}`} className={styles.errorCallRow}>
-                                    <Avatar name={c.manager_name} size={22} />
-                                    <span className={styles.errorCallManager}>{c.manager_name}</span>
-                                    <span className={styles.errorCallDate}>{fmtDate(c.created_at)}</span>
-                                    <span className={styles.errorCallArrow}>→</span>
-                                  </Link>
-                                ))}
+                                {calls.map(c => <DrillDownCallRow key={c.call_id} call={c} />)}
                                 {e.fail_count > calls.length && (
                                   <div className={styles.errorCallsState}>Показаны последние {calls.length} из {e.fail_count}</div>
                                 )}
@@ -476,21 +520,14 @@ export default function AnalyticsPage() {
                           {isOpen && (
                             <div className={styles.errorCalls}>
                               {calls === 'loading' || calls === undefined ? (
-                                <div className={styles.errorCallsState}>Загрузка...</div>
+                                <DrillDownSkeleton />
                               ) : calls === 'error' ? (
                                 <div className={styles.errorCallsState}>Не удалось загрузить звонки</div>
                               ) : calls.length === 0 ? (
                                 <div className={styles.errorCallsState}>Провалов по этому критерию не найдено</div>
                               ) : (
                                 <>
-                                  {calls.map(c => (
-                                    <Link key={c.call_id} to={`/calls/${c.call_id}`} className={styles.errorCallRow}>
-                                      <Avatar name={c.manager_name} size={22} />
-                                      <span className={styles.errorCallManager}>{c.manager_name}</span>
-                                      <span className={styles.errorCallDate}>{fmtDate(c.created_at)}</span>
-                                      <span className={styles.errorCallArrow}>→</span>
-                                    </Link>
-                                  ))}
+                                  {calls.map(c => <DrillDownCallRow key={c.call_id} call={c} />)}
                                   {calls.length >= 4 && (
                                     <div className={styles.errorCallsState}>Показаны последние {calls.length}</div>
                                   )}

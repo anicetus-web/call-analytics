@@ -93,6 +93,50 @@ function fmtCallDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
+// Scores are one of {0, 0.5} in this drill-down (the endpoint only ever
+// returns calls that failed, i.e. score < 1.0) — a plain 0/50 percentage
+// on its own doesn't say whether that's "missed entirely" or "partial
+// credit", so spell it out.
+function scoreBadge(score: number): { text: string; className: string } {
+  return score === 0
+    ? { text: 'Не выполнено', className: styles.badgeFail }
+    : { text: 'Частично · 50%', className: styles.badgePartial }
+}
+
+function DrillDownCallRow({ call }: { call: TopErrorCallItem }) {
+  const badge = scoreBadge(call.score)
+  return (
+    <Link to={`/calls/${call.call_id}`} className={styles.metricCallRow}>
+      <Avatar name={call.manager_name} size={26} />
+      <div className={styles.metricCallMain}>
+        <span className={styles.metricCallManager}>{call.manager_name}</span>
+        <span className={styles.metricCallMeta}>
+          {fmtCallDate(call.created_at)} · {fmtDuration(call.duration_seconds)}
+        </span>
+      </div>
+      <span className={`${styles.metricCallBadge} ${badge.className}`}>{badge.text}</span>
+      <span className={styles.metricCallArrow}>→</span>
+    </Link>
+  )
+}
+
+function DrillDownSkeleton() {
+  return (
+    <>
+      {[0, 1].map(i => (
+        <div key={i} className={styles.metricCallSkeleton}>
+          <span className={styles.skeletonAvatar} />
+          <div className={styles.metricCallMain}>
+            <span className={styles.skeletonLine} style={{ width: '55%' }} />
+            <span className={styles.skeletonLine} style={{ width: '35%' }} />
+          </div>
+          <span className={styles.skeletonBadge} />
+        </div>
+      ))}
+    </>
+  )
+}
+
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const projectId = Number(id)
@@ -330,21 +374,14 @@ export default function ProjectDetailPage() {
                       {isOpen && (
                         <div className={styles.metricCalls}>
                           {calls === 'loading' || calls === undefined ? (
-                            <div className={styles.metricCallsState}>Загрузка...</div>
+                            <DrillDownSkeleton />
                           ) : calls === 'error' ? (
                             <div className={styles.metricCallsState}>Не удалось загрузить звонки</div>
                           ) : calls.length === 0 ? (
                             <div className={styles.metricCallsState}>Провалов по этому критерию не найдено</div>
                           ) : (
                             <>
-                              {calls.map(c => (
-                                <Link key={c.call_id} to={`/calls/${c.call_id}`} className={styles.metricCallRow}>
-                                  <Avatar name={c.manager_name} size={22} />
-                                  <span className={styles.metricCallManager}>{c.manager_name}</span>
-                                  <span className={styles.metricCallDate}>{fmtCallDate(c.created_at)}</span>
-                                  <span className={styles.metricCallArrow}>→</span>
-                                </Link>
-                              ))}
+                              {calls.map(c => <DrillDownCallRow key={c.call_id} call={c} />)}
                               {calls.length >= 4 && (
                                 <div className={styles.metricCallsState}>Показаны последние {calls.length}</div>
                               )}
