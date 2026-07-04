@@ -201,7 +201,10 @@
   grid-auto-columns: minmax(120px, 1fr);
   gap: 10px;
   overflow-x: auto;
-  padding-bottom: 2px;
+  /* overflow-x:auto makes overflow-y computed as auto too, which would clip
+     a card's upward hover lift (its pink top border got cut off). Vertical
+     padding gives the lift room inside the scroll box so nothing clips. */
+  padding: 6px 0;
 }
 
 .metricCard {
