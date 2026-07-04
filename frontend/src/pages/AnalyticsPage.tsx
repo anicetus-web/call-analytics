@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  getKpi, getTopErrors, getQualityDistribution, getManagersTrend, getKeywords,
+  getKpi, getTopErrors, getTopErrorCalls, getQualityDistribution, getManagersTrend, getKeywords,
   getDurationBuckets, getMetricSummary, getProjects, getManagers,
-  Kpi, TopErrorItem, QualityDistribution, ManagerTrendItem, KeywordItem, DurationBucket, MetricSummary, Project, Manager,
+  Kpi, TopErrorItem, TopErrorCallItem, QualityDistribution, ManagerTrendItem, KeywordItem, DurationBucket, MetricSummary, Project, Manager,
 } from '../api'
 import { PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { IconTarget, IconTrend, IconAlert, IconPhoneWave } from '../components/icons'
@@ -24,6 +24,10 @@ const chartTooltipStyle = {
 
 function fmtPct(v: number): string {
   return `${Math.round(v * 100)}%`
+}
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
 // v is a fraction-of-1 delta (e.g. 0.04 = "+4 percentage points"), matching how avg_score itself is stored.
@@ -54,6 +58,9 @@ export default function AnalyticsPage() {
   const [activeBucket, setActiveBucket] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [expandedError, setExpandedError] = useState<number | null>(null)
+  const [errorCalls, setErrorCalls] = useState<Record<number, TopErrorCallItem[] | 'loading' | 'error'>>({})
 
   const requestIdRef = useRef(0)
 
@@ -129,6 +136,29 @@ export default function AnalyticsPage() {
   }, [projectId, managerId, dateFrom, dateTo])
 
   useEffect(() => { load() }, [load])
+
+  // Reset drill-down state whenever the underlying filters change — a
+  // previously expanded error's call list would otherwise silently show
+  // stale results scoped to the old filter combination.
+  useEffect(() => {
+    setExpandedError(null)
+    setErrorCalls({})
+  }, [projectId, managerId, dateFrom, dateTo])
+
+  function toggleError(metricItemId: number) {
+    const next = expandedError === metricItemId ? null : metricItemId
+    setExpandedError(next)
+    if (next !== null && !errorCalls[next]) {
+      setErrorCalls(prev => ({ ...prev, [next]: 'loading' }))
+      getTopErrorCalls(next, {
+        userId: managerId ? Number(managerId) : undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      })
+        .then(calls => setErrorCalls(prev => ({ ...prev, [next]: calls })))
+        .catch(() => setErrorCalls(prev => ({ ...prev, [next]: 'error' })))
+    }
+  }
 
   const topManagers = managersTrend.slice(0, 3)
   const worstManagers = [...managersTrend].slice(3).reverse()
@@ -276,24 +306,56 @@ export default function AnalyticsPage() {
                 <div className={styles.empty}>Нет данных за выбранный период</div>
               ) : (
                 <div className={styles.errorList}>
-                  {topErrors.map(e => (
-                    <div key={e.metric_item_id} className={styles.errorRow}>
-                      <div className={styles.errorTop}>
-                        <span className={styles.errorName}>
-                          {e.metric_name}
-                          {!projectId && (
-                            <Link to={`/projects/${e.project_id}`} className={styles.errorProject} onClick={ev => ev.stopPropagation()}>
-                              {' '}· {e.project_name}
-                            </Link>
-                          )}
-                        </span>
-                        <span className={styles.errorCount}>{e.fail_count} случаев</span>
+                  {topErrors.map(e => {
+                    const isOpen = expandedError === e.metric_item_id
+                    const calls = errorCalls[e.metric_item_id]
+                    return (
+                      <div key={e.metric_item_id} className={styles.errorItem}>
+                        <button
+                          type="button"
+                          className={styles.errorRow}
+                          onClick={() => toggleError(e.metric_item_id)}
+                          aria-expanded={isOpen}
+                        >
+                          <div className={styles.errorTop}>
+                            <span className={styles.errorName}>
+                              <span className={`${styles.errorChevron} ${isOpen ? styles.errorChevronOpen : ''}`}>▸</span>
+                              {e.metric_name}
+                              {!projectId && (
+                                <Link to={`/projects/${e.project_id}`} className={styles.errorProject} onClick={ev => ev.stopPropagation()}>
+                                  {' '}· {e.project_name}
+                                </Link>
+                              )}
+                            </span>
+                            <span className={styles.errorCount}>{e.fail_count} случаев</span>
+                          </div>
+                          <div className={styles.errorBarTrack}>
+                            <div className={styles.errorBarFill} style={{ width: `${e.fail_rate * 100}%` }} />
+                          </div>
+                        </button>
+                        {isOpen && (
+                          <div className={styles.errorCalls}>
+                            {calls === 'loading' || calls === undefined ? (
+                              <div className={styles.errorCallsState}>Загрузка...</div>
+                            ) : calls === 'error' ? (
+                              <div className={styles.errorCallsState}>Не удалось загрузить звонки</div>
+                            ) : calls.length === 0 ? (
+                              <div className={styles.errorCallsState}>Звонки не найдены</div>
+                            ) : (
+                              calls.map(c => (
+                                <Link key={c.call_id} to={`/calls/${c.call_id}`} className={styles.errorCallRow}>
+                                  <Avatar name={c.manager_name} size={22} />
+                                  <span className={styles.errorCallManager}>{c.manager_name}</span>
+                                  <span className={styles.errorCallDate}>{fmtDate(c.created_at)}</span>
+                                  <span className={styles.errorCallArrow}>→</span>
+                                </Link>
+                              ))
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <div className={styles.errorBarTrack}>
-                        <div className={styles.errorBarFill} style={{ width: `${e.fail_rate * 100}%` }} />
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>

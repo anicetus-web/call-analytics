@@ -315,15 +315,84 @@
   gap: 10px;
 }
 
+.errorItem {
+  display: flex;
+  flex-direction: column;
+}
+
 .errorRow {
+  display: block;
+  width: 100%;
   padding: 8px 10px;
   background: var(--bg-hover);
+  border: none;
   border-radius: var(--radius-sm);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   transition: background 0.15s, transform 0.15s;
 }
 .errorRow:hover {
   background: var(--bg-elevated);
   transform: translateX(2px);
+}
+
+.errorChevron {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 10px;
+  color: var(--text-faint);
+  transition: transform 0.15s;
+}
+.errorChevronOpen {
+  transform: rotate(90deg);
+}
+
+.errorCalls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px 10px 26px;
+  animation: errorCallsIn 0.15s ease;
+}
+@keyframes errorCallsIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.errorCallsState {
+  font-size: 12px;
+  color: var(--text-faint);
+  padding: 4px 0;
+}
+
+.errorCallRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  transition: background 0.15s;
+}
+.errorCallRow:hover {
+  background: var(--bg-elevated);
+}
+
+.errorCallManager {
+  font-size: 12px;
+  font-weight: 500;
+  flex: 1;
+}
+
+.errorCallDate {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.errorCallArrow {
+  color: var(--text-faint);
+  font-size: 12px;
 }
 
 .errorTop {

@@ -166,6 +166,15 @@ class KeywordItem(BaseModel):
     count: int
 
 
+class TopErrorCallItem(BaseModel):
+    call_id: int
+    user_id: int
+    manager_name: str
+    created_at: str  # ISO datetime
+    duration_seconds: int | None
+    score: float
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 async def _assert_project_exists(db: AsyncSession, project_id: int) -> None:
@@ -817,6 +826,57 @@ async def top_errors(
     return await _fetch_top_errors(
         db, project_id=project_id, user_id=user_id, date_from=date_from, date_to=date_to, limit=limit,
     )
+
+
+@router.get("/top-errors/{metric_item_id}/calls", response_model=list[TopErrorCallItem])
+async def top_error_calls(
+    metric_item_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    user_id: int | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=100),
+) -> list[TopErrorCallItem]:
+    """Which specific calls failed a given metric item (score < 1.0), newest
+    first — lets the admin drill from "Частые ошибки" straight to the calls
+    responsible for that count instead of only seeing an aggregate."""
+    result = await db.execute(select(MetricItem).where(MetricItem.id == metric_item_id))
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Metric item not found")
+
+    q = _apply_common_filters(
+        select(
+            Call.id.label("call_id"),
+            Call.user_id,
+            User.name.label("manager_name"),
+            Call.created_at,
+            Call.duration_seconds,
+            AnalysisResult.score,
+        )
+        .join(AnalysisResult, AnalysisResult.call_id == Call.id)
+        .join(User, User.id == Call.user_id)
+        .where(
+            AnalysisResult.metric_item_id == metric_item_id,
+            AnalysisResult.score < 1.0,
+            Call.status == CallStatus.DONE,
+        )
+        .order_by(Call.created_at.desc())
+        .limit(limit),
+        project_id=None, date_from=date_from, date_to=date_to, user_id=user_id,
+    )
+    rows = (await db.execute(q)).all()
+    return [
+        TopErrorCallItem(
+            call_id=r.call_id,
+            user_id=r.user_id,
+            manager_name=r.manager_name,
+            created_at=r.created_at.isoformat(),
+            duration_seconds=r.duration_seconds,
+            score=float(r.score),
+        )
+        for r in rows
+    ]
 
 
 @router.get("/quality-distribution", response_model=QualityDistributionOut)

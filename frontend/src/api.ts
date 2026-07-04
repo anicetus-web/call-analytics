@@ -367,6 +367,20 @@ export const getKpi = (projectId?: number, userId?: number) =>
 export const getTopErrors = (params: GlobalAnalyticsParams = {}, limit = 5) =>
   api.get<TopErrorItem[]>('/analytics/top-errors', { params: { ...globalParams(params), limit } }).then(r => r.data)
 
+export interface TopErrorCallItem {
+  call_id: number
+  user_id: number
+  manager_name: string
+  created_at: string
+  duration_seconds: number | null
+  score: number
+}
+
+export const getTopErrorCalls = (metricItemId: number, params: GlobalAnalyticsParams = {}, limit = 20) =>
+  api.get<TopErrorCallItem[]>(`/analytics/top-errors/${metricItemId}/calls`, {
+    params: { user_id: params.userId, date_from: params.dateFrom, date_to: params.dateTo, limit },
+  }).then(r => r.data)
+
 export const getQualityDistribution = (params: GlobalAnalyticsParams = {}) =>
   api.get<QualityDistribution>('/analytics/quality-distribution', { params: globalParams(params) }).then(r => r.data)
 
