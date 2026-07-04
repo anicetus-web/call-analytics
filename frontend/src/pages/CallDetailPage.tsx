@@ -94,7 +94,7 @@ export default function CallDetailPage() {
     }
   }
 
-  if (loading) return <div className={styles.state}>Загрузка...</div>
+  if (loading) return <div className={styles.state}>Загрузка…</div>
   if (error) return <div className={`${styles.state} ${styles.error}`}>{error}</div>
   if (!call) return <div className={styles.state}>Звонок не найден</div>
 
@@ -141,7 +141,7 @@ export default function CallDetailPage() {
             onClick={handleReprocess}
             disabled={reprocessing}
           >
-            {reprocessing ? 'Перезапуск...' : 'Повторить'}
+            {reprocessing ? 'Перезапуск…' : 'Повторить'}
           </button>
         </div>
       )}
@@ -184,7 +184,7 @@ export default function CallDetailPage() {
 
       {IN_PROGRESS_STATUSES.has(call.status) && (
         <div className={styles.processing}>
-          ⏳ Звонок обрабатывается... (обновляется автоматически)
+          ⏳ Звонок обрабатывается… (обновляется автоматически)
         </div>
       )}
     </div>

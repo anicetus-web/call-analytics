@@ -75,7 +75,7 @@ export default function ManagerRankingPage() {
       </div>
 
       {loading ? (
-        <div className={styles.state}>Загрузка...</div>
+        <div className={styles.state}>Загрузка…</div>
       ) : error ? (
         <div className={`${styles.state} ${styles.error}`}>{error}</div>
       ) : managers.length === 0 ? (

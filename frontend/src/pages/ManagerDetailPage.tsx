@@ -150,7 +150,7 @@ export default function ManagerDetailPage() {
 
   const missedDaysCount = activityStrip.filter(d => !d.active).length
 
-  if (!managerLoaded) return <div className={styles.state}>Загрузка...</div>
+  if (!managerLoaded) return <div className={styles.state}>Загрузка…</div>
   if (managerError) return <div className={`${styles.state} ${styles.error}`}>{managerError}</div>
   if (!manager) return <div className={`${styles.state} ${styles.error}`}>Менеджер не найден</div>
 
@@ -201,7 +201,7 @@ export default function ManagerDetailPage() {
       {error ? (
         <div className={`${styles.state} ${styles.error}`}>{error}</div>
       ) : loading || !overview ? (
-        <div className={styles.state}>Загрузка...</div>
+        <div className={styles.state}>Загрузка…</div>
       ) : (
         <>
           <div className={styles.tiles}>

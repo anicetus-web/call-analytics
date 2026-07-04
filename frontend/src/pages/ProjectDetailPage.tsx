@@ -229,7 +229,7 @@ export default function ProjectDetailPage() {
 
   useEffect(() => { loadTimeline() }, [loadTimeline])
 
-  if (loading) return <div className={styles.state}>Загрузка...</div>
+  if (loading) return <div className={styles.state}>Загрузка…</div>
   if (error) return <div className={`${styles.state} ${styles.error}`}>{error}</div>
   if (!project) return <div className={styles.state}>Проект не найден</div>
 
@@ -326,7 +326,7 @@ export default function ProjectDetailPage() {
               </div>
             </div>
             {timelineLoading ? (
-              <div className={styles.state}>Загрузка...</div>
+              <div className={styles.state}>Загрузка…</div>
             ) : timeline.length === 0 ? (
               <div className={styles.empty}>Нет оценённых звонков за этот период</div>
             ) : (
@@ -518,7 +518,7 @@ function ProjectInfoForm({
 
   return (
     <form className={formStyles.form} onSubmit={handleSubmit} style={{ maxWidth: 460 }}>
-      {error && <div className={formStyles.error}>{error}</div>}
+      {error && <div className={formStyles.error} role="alert">{error}</div>}
       <label className={formStyles.label}>
         Название
         <input className={formStyles.input} value={name} onChange={e => setName(e.target.value)} required />
@@ -529,7 +529,7 @@ function ProjectInfoForm({
       </label>
       <div className={formStyles.actions}>
         <button className={formStyles.btnPrimary} type="submit" disabled={saving}>
-          {saving ? 'Сохранение...' : 'Сохранить'}
+          {saving ? 'Сохранение…' : 'Сохранить'}
         </button>
         <button className={formStyles.btnDanger} type="button" onClick={handleArchive}>
           Архивировать проект
@@ -577,7 +577,7 @@ function CreateManagerModal({ projectId, onClose, onDone }: { projectId: number;
   return (
     <Modal title="Добавить менеджера" onClose={onClose}>
       <form className={formStyles.form} onSubmit={handleSubmit}>
-        {error && <div className={formStyles.error}>{error}</div>}
+        {error && <div className={formStyles.error} role="alert">{error}</div>}
         <label className={formStyles.label}>
           Имя
           <input className={formStyles.input} value={name} onChange={e => setName(e.target.value)} required autoFocus />
@@ -587,6 +587,8 @@ function CreateManagerModal({ projectId, onClose, onDone }: { projectId: number;
           <input
             className={formStyles.input}
             type="number"
+            inputMode="numeric"
+            autoComplete="off"
             value={telegramId}
             onChange={e => setTelegramId(e.target.value)}
             required
@@ -594,7 +596,7 @@ function CreateManagerModal({ projectId, onClose, onDone }: { projectId: number;
         </label>
         <div className={formStyles.actions}>
           <button className={formStyles.btnPrimary} type="submit" disabled={saving}>
-            {saving ? 'Создание...' : 'Создать и добавить в проект'}
+            {saving ? 'Создание…' : 'Создать и добавить в проект'}
           </button>
           <button className={formStyles.btnSecondary} type="button" onClick={onClose}>Отмена</button>
         </div>
@@ -714,7 +716,7 @@ function MetricGroupsEditor({ projectId }: { projectId: number }) {
     }
   }
 
-  if (loading) return <div className={styles.state}>Загрузка...</div>
+  if (loading) return <div className={styles.state}>Загрузка…</div>
   if (error) return <div className={`${styles.state} ${styles.error}`}>{error}</div>
 
   return (
@@ -815,8 +817,8 @@ function MetricGroupCard({
             <li key={item.id} className={styles.itemRow}>
               <span>{item.position}. {item.name}</span>
               <span className={styles.itemActions}>
-                <button className={formStyles.btnLink} onClick={() => handleRenameItem(item.id, item.name)}>✎</button>
-                <button className={formStyles.btnLink} onClick={() => handleDeleteItem(item.id)}>×</button>
+                <button className={formStyles.btnLink} onClick={() => handleRenameItem(item.id, item.name)} aria-label={`Переименовать «${item.name}»`}>✎</button>
+                <button className={formStyles.btnLink} onClick={() => handleDeleteItem(item.id)} aria-label={`Удалить «${item.name}»`}>×</button>
               </span>
             </li>
           ))}
@@ -865,7 +867,7 @@ export function CreateGroupModal({
   return (
     <Modal title="Новая группа метрик" onClose={onClose}>
       <form className={formStyles.form} onSubmit={handleSubmit}>
-        {error && <div className={formStyles.error}>{error}</div>}
+        {error && <div className={formStyles.error} role="alert">{error}</div>}
         <label className={formStyles.label}>
           Название
           <input className={formStyles.input} value={name} onChange={e => setName(e.target.value)} required autoFocus />
@@ -894,7 +896,7 @@ export function CreateGroupModal({
         </label>
         <div className={formStyles.actions}>
           <button className={formStyles.btnPrimary} type="submit" disabled={saving}>
-            {saving ? 'Создание...' : 'Создать'}
+            {saving ? 'Создание…' : 'Создать'}
           </button>
           <button className={formStyles.btnSecondary} type="button" onClick={onClose}>Отмена</button>
         </div>

@@ -44,7 +44,7 @@ export default function ManagersPage() {
     }
   }
 
-  if (loading) return <div className={styles.state}>Загрузка...</div>
+  if (loading) return <div className={styles.state}>Загрузка…</div>
   if (error) return <div className={styles.state + ' ' + styles.error}>{error}</div>
 
   return (
@@ -55,7 +55,9 @@ export default function ManagersPage() {
           <div className={styles.search}>
             <IconSearch size={16} className={styles.searchIcon} />
             <input
-              placeholder="Поиск по имени или Telegram ID..."
+              type="search"
+              aria-label="Поиск по имени или Telegram ID"
+              placeholder="Поиск по имени или Telegram ID…"
               value={query}
               onChange={e => setQuery(e.target.value)}
             />
@@ -162,7 +164,7 @@ function ManagerModal({
   return (
     <Modal title={title} onClose={onClose}>
       <form className={formStyles.form} onSubmit={handleSubmit}>
-        {error && <div className={formStyles.error}>{error}</div>}
+        {error && <div className={formStyles.error} role="alert">{error}</div>}
         <label className={formStyles.label}>
           Имя
           <input
@@ -178,6 +180,8 @@ function ManagerModal({
           <input
             className={formStyles.input}
             type="number"
+            inputMode="numeric"
+            autoComplete="off"
             value={telegramId}
             onChange={e => setTelegramId(e.target.value)}
             required
@@ -185,7 +189,7 @@ function ManagerModal({
         </label>
         <div className={formStyles.actions}>
           <button className={formStyles.btnPrimary} type="submit" disabled={saving}>
-            {saving ? 'Сохранение...' : 'Сохранить'}
+            {saving ? 'Сохранение…' : 'Сохранить'}
           </button>
           <button className={formStyles.btnSecondary} type="button" onClick={onClose}>
             Отмена

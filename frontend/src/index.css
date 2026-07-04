@@ -1,6 +1,8 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
+  color-scheme: dark;
+
   --bg: #0c0c14;
   --bg-elevated: #14141f;
   --bg-card: #181822;
@@ -44,7 +46,12 @@ a { color: inherit; text-decoration: none; }
 button {
   cursor: pointer;
   font-family: inherit;
+  /* Remove the 300ms tap delay and the grey tap flash on mobile. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
+
+a { touch-action: manipulation; }
 
 input, select, textarea {
   font-family: inherit;

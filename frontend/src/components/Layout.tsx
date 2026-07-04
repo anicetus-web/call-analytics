@@ -94,7 +94,7 @@ function EditProfileModal({
   return (
     <Modal title="Профиль" onClose={onClose}>
       <form className={formStyles.form} onSubmit={handleSubmit}>
-        {error && <div className={formStyles.error}>{error}</div>}
+        {error && <div className={formStyles.error} role="alert">{error}</div>}
         <label className={formStyles.label}>
           Имя
           <input
@@ -113,7 +113,7 @@ function EditProfileModal({
         )}
         <div className={formStyles.actions}>
           <button className={formStyles.btnPrimary} type="submit" disabled={saving}>
-            {saving ? 'Сохранение...' : 'Сохранить'}
+            {saving ? 'Сохранение…' : 'Сохранить'}
           </button>
           <button className={formStyles.btnSecondary} type="button" onClick={onClose}>
             Отмена

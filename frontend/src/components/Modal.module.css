@@ -20,6 +20,7 @@
   max-width: 440px;
   max-height: 90vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   box-shadow: 0 20px 60px rgba(0,0,0,0.5);
   animation: scaleIn 0.24s var(--ease-out);
 }

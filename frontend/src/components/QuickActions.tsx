@@ -115,7 +115,7 @@ function AddManagerQuickModal({ onClose, onDone }: { onClose: () => void; onDone
   return (
     <Modal title="Добавить менеджера" onClose={onClose}>
       <form className={formStyles.form} onSubmit={handleSubmit}>
-        {error && <div className={formStyles.error}>{error}</div>}
+        {error && <div className={formStyles.error} role="alert">{error}</div>}
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
         <label className={formStyles.label}>
           Имя
@@ -126,6 +126,8 @@ function AddManagerQuickModal({ onClose, onDone }: { onClose: () => void; onDone
           <input
             className={formStyles.input}
             type="number"
+            inputMode="numeric"
+            autoComplete="off"
             value={telegramId}
             onChange={e => setTelegramId(e.target.value)}
             required
@@ -133,7 +135,7 @@ function AddManagerQuickModal({ onClose, onDone }: { onClose: () => void; onDone
         </label>
         <div className={formStyles.actions}>
           <button className={formStyles.btnPrimary} type="submit" disabled={saving}>
-            {saving ? 'Создание...' : 'Создать и добавить в проект'}
+            {saving ? 'Создание…' : 'Создать и добавить в проект'}
           </button>
           <button className={formStyles.btnSecondary} type="button" onClick={onClose}>Отмена</button>
         </div>

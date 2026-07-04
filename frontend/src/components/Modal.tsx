@@ -9,7 +9,7 @@ export default function Modal({
       <div className={styles.card} onClick={e => e.stopPropagation()}>
         <div className={styles.header}>
           <h2 className={styles.title}>{title}</h2>
-          <button className={styles.closeBtn} onClick={onClose} type="button">×</button>
+          <button className={styles.closeBtn} onClick={onClose} type="button" aria-label="Закрыть">×</button>
         </div>
         {children}
       </div>

@@ -302,7 +302,7 @@ export default function AnalyticsPage() {
       )}
 
       {loading ? (
-        <div className={styles.state}>Загрузка...</div>
+        <div className={styles.state}>Загрузка…</div>
       ) : error ? (
         <div className={`${styles.state} ${styles.error}`}>{error}</div>
       ) : !kpi ? null : (

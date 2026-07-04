@@ -97,7 +97,7 @@ export default function ProjectsPage() {
     }
   }
 
-  if (loading) return <div className={styles.state}>Загрузка...</div>
+  if (loading) return <div className={styles.state}>Загрузка…</div>
   if (error) return <div className={styles.state + ' ' + styles.error}>{error}</div>
 
   return (
@@ -111,7 +111,9 @@ export default function ProjectsPage() {
           <div className={styles.search}>
             <IconSearch size={16} className={styles.searchIcon} />
             <input
-              placeholder="Поиск по проектам..."
+              type="search"
+              aria-label="Поиск по проектам"
+              placeholder="Поиск по проектам…"
               value={query}
               onChange={e => setQuery(e.target.value)}
             />
@@ -281,7 +283,7 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
   return (
     <Modal title="Новый проект" onClose={onClose}>
       <form className={formStyles.form} onSubmit={handleSubmit}>
-        {error && <div className={formStyles.error}>{error}</div>}
+        {error && <div className={formStyles.error} role="alert">{error}</div>}
         <label className={formStyles.label}>
           Название
           <input
@@ -302,7 +304,7 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
         </label>
         <div className={formStyles.actions}>
           <button className={formStyles.btnPrimary} type="submit" disabled={saving}>
-            {saving ? 'Создание...' : 'Создать'}
+            {saving ? 'Создание…' : 'Создать'}
           </button>
           <button className={formStyles.btnSecondary} type="button" onClick={onClose}>
             Отмена

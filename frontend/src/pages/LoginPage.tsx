@@ -36,13 +36,15 @@ export default function LoginPage() {
         <h1 className={styles.title}>Call Analytics</h1>
         <p className={styles.subtitle}>Вход в систему</p>
 
-        {error && <div className={styles.error}>{error}</div>}
+        {error && <div className={styles.error} role="alert">{error}</div>}
 
         <label className={styles.label}>
           Логин
           <input
             className={styles.input}
             type="text"
+            name="username"
+            autoComplete="username"
             value={username}
             onChange={e => setUsername(e.target.value)}
             required
@@ -55,6 +57,8 @@ export default function LoginPage() {
           <input
             className={styles.input}
             type="password"
+            name="password"
+            autoComplete="current-password"
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
@@ -62,7 +66,7 @@ export default function LoginPage() {
         </label>
 
         <button className={styles.btn} type="submit" disabled={loading}>
-          {loading ? 'Вход...' : 'Войти'}
+          {loading ? 'Вход…' : 'Войти'}
         </button>
       </form>
     </div>
