@@ -44,6 +44,10 @@
   width: 100%;
 }
 .search input::placeholder { color: var(--text-faint); }
+/* type="search" renders a native × clear button in WebKit; this page has
+   its own .searchClear button, so suppress the native one to avoid a
+   duplicate clear control. */
+.search input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
 .searchIcon { color: var(--text-faint); flex-shrink: 0; }
 
 .searchClear {

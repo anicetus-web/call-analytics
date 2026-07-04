@@ -266,7 +266,11 @@
   inset: 6px;
   border-radius: 50%;
   background: var(--bg-hover);
+  transition: background 0.18s var(--ease-out);
 }
+/* Keep the ring's center hole matching the card background on hover
+   (card lifts to --bg-elevated), otherwise the hole reads darker. */
+.metricCard:hover .metricRing::before { background: var(--bg-elevated); }
 
 .metricRingValue {
   position: relative;
