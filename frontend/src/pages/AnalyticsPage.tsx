@@ -116,6 +116,8 @@ export default function AnalyticsPage() {
   const [skillCalls, setSkillCalls] = useState<Record<number, TopErrorCallItem[] | 'loading' | 'error'>>({})
 
   const requestIdRef = useRef(0)
+  const qualityRef = useRef<HTMLDivElement>(null)
+  const errorsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     Promise.all([getProjects(true), getManagers()])
@@ -200,8 +202,7 @@ export default function AnalyticsPage() {
     setSkillCalls({})
   }, [projectId, managerId, dateFrom, dateTo])
 
-  function toggleError(metricItemId: number) {
-    const next = expandedError === metricItemId ? null : metricItemId
+  function openError(next: number | null) {
     setExpandedError(next)
     if (next !== null && !errorCalls[next]) {
       setErrorCalls(prev => ({ ...prev, [next]: 'loading' }))
@@ -213,6 +214,25 @@ export default function AnalyticsPage() {
         .then(calls => setErrorCalls(prev => ({ ...prev, [next]: calls })))
         .catch(() => setErrorCalls(prev => ({ ...prev, [next]: 'error' })))
     }
+  }
+
+  function toggleError(metricItemId: number) {
+    openError(expandedError === metricItemId ? null : metricItemId)
+  }
+
+  function scrollToQuality() {
+    qualityRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  function handleMainProblemClick() {
+    if (!kpi?.main_problem) return
+    // kpi.main_problem is always computed over a fixed last-7-days window,
+    // independent of this page's own date filter — if the filter is set to
+    // a different range, that metric may not be one of the top 5 for the
+    // range actually shown below, and there'd be nothing to expand under.
+    const visibleBelow = topErrors.some(e => e.metric_item_id === kpi.main_problem!.metric_item_id)
+    if (visibleBelow) openError(kpi.main_problem.metric_item_id)
+    errorsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   function toggleSkill(metricItemId: number) {
@@ -282,7 +302,7 @@ export default function AnalyticsPage() {
       ) : !kpi ? null : (
         <>
           <div className={styles.tiles}>
-            <div className={styles.tile}>
+            <button type="button" className={`${styles.tile} ${styles.tileClickable}`} onClick={scrollToQuality}>
               <span className={styles.tileIcon}><IconTarget size={18} /></span>
               <div>
                 <div className={styles.tileValue}>
@@ -290,8 +310,9 @@ export default function AnalyticsPage() {
                   {scoreDelta && <span className={scoreDelta.className}> {scoreDelta.text}</span>}
                 </div>
                 <div className={styles.tileLabel}>Средняя оценка AI за неделю</div>
+                <div className={styles.tileHint}>Смотреть распределение качества →</div>
               </div>
-            </div>
+            </button>
             {!selectedManager && (
               <div className={styles.tile}>
                 <span className={styles.tileIcon}><IconTrend size={18} /></span>
@@ -309,7 +330,12 @@ export default function AnalyticsPage() {
                 </div>
               </div>
             )}
-            <div className={styles.tile}>
+            <button
+              type="button"
+              className={`${styles.tile} ${styles.tileClickable}`}
+              onClick={handleMainProblemClick}
+              disabled={!kpi.main_problem}
+            >
               <span className={styles.tileIcon}><IconAlert size={18} /></span>
               <div>
                 <div className={styles.tileValue}>
@@ -318,19 +344,21 @@ export default function AnalyticsPage() {
                 <div className={styles.tileLabel}>
                   {kpi.main_problem ? kpi.main_problem.metric_name : 'Основная проблема за неделю'}
                 </div>
+                {kpi.main_problem && <div className={styles.tileHint}>Показать эти звонки →</div>}
               </div>
-            </div>
-            <div className={styles.tile}>
+            </button>
+            <Link to="/calls" className={`${styles.tile} ${styles.tileClickable}`}>
               <span className={styles.tileIcon}><IconPhoneWave size={18} /></span>
               <div>
                 <div className={styles.tileValue}>{kpi.calls_analyzed}</div>
                 <div className={styles.tileLabel}>Звонков оценено AI за неделю</div>
+                <div className={styles.tileHint}>Открыть все звонки →</div>
               </div>
-            </div>
+            </Link>
           </div>
 
           <div className={styles.grid}>
-            <div className={styles.section}>
+            <div className={styles.section} ref={qualityRef}>
               <h2 className={styles.sectionTitle}>Распределение качества звонков</h2>
               {qualityData.length === 0 ? (
                 <div className={styles.empty}>Нет оценённых звонков за выбранный период</div>
@@ -368,7 +396,7 @@ export default function AnalyticsPage() {
               )}
             </div>
 
-            <div className={styles.section}>
+            <div className={styles.section} ref={errorsRef}>
               <h2 className={styles.sectionTitle}>
                 Частые ошибки{selectedManager ? ` — ${selectedManager.name}` : ' менеджеров'}
               </h2>

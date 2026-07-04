@@ -32,12 +32,16 @@
 
 .heatmapRow {
   display: grid;
-  grid-template-columns: 28px repeat(24, 1fr);
-  gap: 4px;
+  /* Fixed (not 1fr) column width — on wide screens 1fr let each cell grow
+     with aspect-ratio:1, ballooning the whole grid to an oversized square
+     block. Capping the width keeps the heatmap compact regardless of the
+     page's available width. */
+  grid-template-columns: 26px repeat(24, minmax(0, 24px));
+  gap: 3px;
   align-items: center;
 }
 
-.heatmapCorner { width: 28px; }
+.heatmapCorner { width: 26px; }
 
 .heatmapHourLabel {
   font-size: 9px;
