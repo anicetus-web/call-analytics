@@ -643,9 +643,39 @@
 .skillsRow {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
   flex: 1;
   min-height: 0;
+}
+
+/* One block per metric group, each with its own header + overall score. */
+.skillGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.skillGroup + .skillGroup {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.skillGroupHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.skillGroupName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.skillGroupScore {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .keywordList {

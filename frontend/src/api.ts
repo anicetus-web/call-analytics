@@ -238,6 +238,9 @@ export interface MetricSummary {
   position: number
   avg_score: number
   call_count: number
+  metric_group_id: number
+  metric_group_name: string
+  metric_group_type: 'required_keywords' | 'forbidden_keywords' | 'script_stages'
 }
 
 export interface ManagerSummary {

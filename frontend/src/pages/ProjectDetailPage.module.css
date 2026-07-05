@@ -191,6 +191,43 @@
   margin: -10px 0 12px;
 }
 
+/* One analytics block per metric group — its own header, overall score,
+   and criteria row, so groups (sales checklist, forbidden words, …) read
+   separately instead of as one mixed list. */
+.metricGroupBlock {
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+}
+.metricGroupBlock:first-of-type { border-top: none; padding-top: 6px; }
+
+.metricGroupHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.metricGroupName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.metricGroupHint {
+  display: block;
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+.metricGroupScore {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 /* Equal-sized cards in a single row filling the block width. auto-flow
    column keeps everything on one line; each card is ≥120px and grows to
    share the width evenly, and the row scrolls horizontally only if there

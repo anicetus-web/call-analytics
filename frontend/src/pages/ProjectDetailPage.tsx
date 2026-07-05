@@ -145,6 +145,36 @@ function DrillDownSkeleton() {
   )
 }
 
+interface MetricGroupBlock {
+  id: number
+  name: string
+  type: MetricSummary['metric_group_type']
+  items: MetricSummary[]
+}
+
+// Split a flat metric-summary list into one block per metric group, preserving
+// the group + position order the backend already sorted by.
+function groupMetrics(metrics: MetricSummary[]): MetricGroupBlock[] {
+  const blocks: MetricGroupBlock[] = []
+  const byId = new Map<number, MetricGroupBlock>()
+  for (const m of metrics) {
+    let block = byId.get(m.metric_group_id)
+    if (!block) {
+      block = { id: m.metric_group_id, name: m.metric_group_name, type: m.metric_group_type, items: [] }
+      byId.set(m.metric_group_id, block)
+      blocks.push(block)
+    }
+    block.items.push(m)
+  }
+  return blocks
+}
+
+const GROUP_TYPE_HINT: Record<MetricSummary['metric_group_type'], string> = {
+  script_stages: 'средний % выполнения этапов',
+  required_keywords: 'средний % обязательных пунктов',
+  forbidden_keywords: 'средний % соблюдения (чем выше — тем реже нарушения)',
+}
+
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const projectId = Number(id)
@@ -355,64 +385,85 @@ export default function ProjectDetailPage() {
               ? metrics.find(m => m.metric_item_id === expandedMetric) ?? null
               : null
             const openCalls = expandedMetric !== null ? metricCalls[expandedMetric] : undefined
+            const blocks = groupMetrics(metrics)
             return (
-              <div className={managers.length === 0 ? `${styles.section} ${styles.sectionWide}` : styles.section}>
-                <h2 className={styles.sectionTitle}>По критериям</h2>
-                <p className={styles.sectionDesc}>Нажмите на критерий, чтобы увидеть конкретные звонки, где он не выполнен</p>
-                <div className={styles.metricGrid}>
-                  {metrics.map(m => {
-                    const isOpen = expandedMetric === m.metric_item_id
-                    const pct = Math.round(m.avg_score * 100)
-                    return (
-                      <button
-                        key={m.metric_item_id}
-                        type="button"
-                        className={`${styles.metricCard} ${isOpen ? styles.metricCardActive : ''}`}
-                        onClick={() => toggleMetric(m.metric_item_id)}
-                        aria-expanded={isOpen}
-                      >
-                        <div className={styles.scoreRingWrap}>
-                          <div
-                            className={styles.scoreRing}
-                            style={{ background: `conic-gradient(${scoreTierColor(m.avg_score)} ${pct * 3.6}deg, var(--bg-hover) 0deg)` }}
-                          />
-                          <span className={styles.scoreRingValue}>{pct}%</span>
+              <div className={`${styles.section} ${styles.sectionWide}`}>
+                <h2 className={styles.sectionTitle}>Аналитика по критериям</h2>
+                <p className={styles.sectionDesc}>
+                  Каждая группа метрик оценивается и выводится отдельно. Нажмите на критерий, чтобы
+                  увидеть конкретные звонки, где он не выполнен.
+                </p>
+                {blocks.map(block => {
+                  const groupAvg = block.items.reduce((s, i) => s + i.avg_score, 0) / block.items.length
+                  const groupPct = Math.round(groupAvg * 100)
+                  return (
+                    <div key={block.id} className={styles.metricGroupBlock}>
+                      <div className={styles.metricGroupHead}>
+                        <div>
+                          <span className={styles.metricGroupName}>{block.name}</span>
+                          <span className={styles.metricGroupHint}>{GROUP_TYPE_HINT[block.type]}</span>
                         </div>
-                        <span className={styles.metricCardName}>{m.name}</span>
-                        <span className={styles.callCnt}>{m.call_count} зв.</span>
-                      </button>
-                    )
-                  })}
-                </div>
-                {openMetric && (
-                  <div className={styles.drillPanel}>
-                    <div className={styles.drillPanelTitle}>
-                      Звонки, где не выполнен критерий «{openMetric.name}»
-                    </div>
-                    <div className={styles.metricCalls}>
-                      {openCalls === 'loading' || openCalls === undefined ? (
-                        <DrillDownSkeleton />
-                      ) : openCalls === 'error' ? (
-                        <div className={styles.metricCallsState}>Не удалось загрузить звонки</div>
-                      ) : openCalls.length === 0 ? (
-                        <div className={styles.metricCallsState}>Провалов по этому критерию не найдено</div>
-                      ) : (
-                        <>
-                          {openCalls.map(c => <DrillDownCallRow key={c.call_id} call={c} />)}
-                          {openCalls.length >= 4 && (
-                            <div className={styles.metricCallsState}>Показаны последние {openCalls.length}</div>
-                          )}
-                        </>
+                        <span className={styles.metricGroupScore} style={{ color: scoreTierColor(groupAvg) }}>
+                          {groupPct}%
+                        </span>
+                      </div>
+                      <div className={styles.metricGrid}>
+                        {block.items.map(m => {
+                          const isOpen = expandedMetric === m.metric_item_id
+                          const pct = Math.round(m.avg_score * 100)
+                          return (
+                            <button
+                              key={m.metric_item_id}
+                              type="button"
+                              className={`${styles.metricCard} ${isOpen ? styles.metricCardActive : ''}`}
+                              onClick={() => toggleMetric(m.metric_item_id)}
+                              aria-expanded={isOpen}
+                            >
+                              <div className={styles.scoreRingWrap}>
+                                <div
+                                  className={styles.scoreRing}
+                                  style={{ background: `conic-gradient(${scoreTierColor(m.avg_score)} ${pct * 3.6}deg, var(--bg-hover) 0deg)` }}
+                                />
+                                <span className={styles.scoreRingValue}>{pct}%</span>
+                              </div>
+                              <span className={styles.metricCardName}>{m.name}</span>
+                              <span className={styles.callCnt}>{m.call_count} зв.</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {openMetric && openMetric.metric_group_id === block.id && (
+                        <div className={styles.drillPanel}>
+                          <div className={styles.drillPanelTitle}>
+                            Звонки, где не выполнен критерий «{openMetric.name}»
+                          </div>
+                          <div className={styles.metricCalls}>
+                            {openCalls === 'loading' || openCalls === undefined ? (
+                              <DrillDownSkeleton />
+                            ) : openCalls === 'error' ? (
+                              <div className={styles.metricCallsState}>Не удалось загрузить звонки</div>
+                            ) : openCalls.length === 0 ? (
+                              <div className={styles.metricCallsState}>Провалов по этому критерию не найдено</div>
+                            ) : (
+                              <>
+                                {openCalls.map(c => <DrillDownCallRow key={c.call_id} call={c} />)}
+                                {openCalls.length >= 4 && (
+                                  <div className={styles.metricCallsState}>Показаны последние {openCalls.length}</div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
-                )}
+                  )
+                })}
               </div>
             )
           })()}
 
           {managers.length > 0 && (
-            <div className={metrics.length === 0 ? `${styles.section} ${styles.sectionWide}` : styles.section}>
+            <div className={`${styles.section} ${styles.sectionWide}`}>
               <div className={styles.sectionHead}>
                 <h2 className={styles.sectionTitle}>По менеджерам</h2>
                 <Link to="/managers" className={styles.viewAllLink}>Все менеджеры →</Link>

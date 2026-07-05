@@ -49,7 +49,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import require_admin, TokenData
 from database import (
-    Project, Call, CallStatus, AnalysisResult, MetricItem, User, Transcription, get_db,
+    Project, Call, CallStatus, AnalysisResult, MetricItem, MetricGroup, User, Transcription, get_db,
 )
 
 # Common Russian stopwords + filler words, excluded from the keyword-frequency endpoint.
@@ -81,6 +81,12 @@ class MetricSummaryItem(BaseModel):
     position: int
     avg_score: float
     call_count: int
+    # Which metric group this criterion belongs to — lets the dashboard render
+    # a separate analytics section per group (sales-call checklist, forbidden
+    # words, etc.) instead of flattening every group into one mixed list.
+    metric_group_id: int
+    metric_group_name: str
+    metric_group_type: str
 
 
 class ManagerSummaryItem(BaseModel):
@@ -224,7 +230,8 @@ async def project_metric_summary(
     """
     await _assert_project_exists(db, project_id)
 
-    # Join: AnalysisResult → Call (for project+status+date filter) → MetricItem (for name)
+    # Join: AnalysisResult → Call (project+status+date filter) → MetricItem (name)
+    #       → MetricGroup (so results can be split per group on the dashboard).
     q = (
         select(
             MetricItem.id,
@@ -232,16 +239,23 @@ async def project_metric_summary(
             MetricItem.position,
             func.avg(AnalysisResult.score).label("avg_score"),
             func.count(AnalysisResult.id).label("call_count"),
+            MetricGroup.id.label("group_id"),
+            MetricGroup.name.label("group_name"),
+            MetricGroup.group_type.label("group_type"),
         )
         .join(AnalysisResult, AnalysisResult.metric_item_id == MetricItem.id)
         .join(Call, Call.id == AnalysisResult.call_id)
+        .join(MetricGroup, MetricGroup.id == MetricItem.metric_group_id)
         .where(
             Call.project_id == project_id,
             Call.status == CallStatus.DONE,
             MetricItem.is_active.is_(True),
         )
-        .group_by(MetricItem.id, MetricItem.name, MetricItem.position)
-        .order_by(MetricItem.position)
+        .group_by(MetricItem.id, MetricItem.name, MetricItem.position,
+                  MetricGroup.id, MetricGroup.name, MetricGroup.group_type)
+        # position is unique only within a group, so order by group first to
+        # keep each group's items contiguous and correctly sequenced.
+        .order_by(MetricGroup.id, MetricItem.position)
     )
 
     if date_from:
@@ -255,6 +269,9 @@ async def project_metric_summary(
             metric_item_id=row.id,
             name=row.name,
             position=row.position,
+            metric_group_id=row.group_id,
+            metric_group_name=row.group_name,
+            metric_group_type=row.group_type.value if hasattr(row.group_type, "value") else str(row.group_type),
             avg_score=round(float(row.avg_score) if row.avg_score is not None else 0.0, 3),
             call_count=row.call_count,
         )
@@ -593,17 +610,22 @@ async def manager_metrics(
             MetricItem.position,
             func.avg(AnalysisResult.score).label("avg_score"),
             func.count(AnalysisResult.id).label("call_count"),
+            MetricGroup.id.label("group_id"),
+            MetricGroup.name.label("group_name"),
+            MetricGroup.group_type.label("group_type"),
         )
         .join(AnalysisResult, AnalysisResult.metric_item_id == MetricItem.id)
         .join(Call, Call.id == AnalysisResult.call_id)
+        .join(MetricGroup, MetricGroup.id == MetricItem.metric_group_id)
         .where(
             Call.project_id == project_id,
             Call.user_id == user_id,
             Call.status == CallStatus.DONE,
             MetricItem.is_active.is_(True),
         )
-        .group_by(MetricItem.id, MetricItem.name, MetricItem.position)
-        .order_by(MetricItem.position)
+        .group_by(MetricItem.id, MetricItem.name, MetricItem.position,
+                  MetricGroup.id, MetricGroup.name, MetricGroup.group_type)
+        .order_by(MetricGroup.id, MetricItem.position)
     )
     if date_from:
         q = q.where(Call.created_at >= datetime.combine(date_from, time.min, tzinfo=timezone.utc))
@@ -616,6 +638,9 @@ async def manager_metrics(
             metric_item_id=row.id,
             name=row.name,
             position=row.position,
+            metric_group_id=row.group_id,
+            metric_group_name=row.group_name,
+            metric_group_type=row.group_type.value if hasattr(row.group_type, "value") else str(row.group_type),
             avg_score=round(float(row.avg_score) if row.avg_score is not None else 0.0, 3),
             call_count=row.call_count,
         )

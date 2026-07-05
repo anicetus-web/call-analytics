@@ -42,6 +42,29 @@ function scoreTierColor(avgScore: number): string {
   return '#fb7185'
 }
 
+interface MetricGroupBlock {
+  id: number
+  name: string
+  items: MetricSummary[]
+}
+
+// One block per metric group (backend already sorts group-then-position), so a
+// manager's criteria read as separate groups instead of one mixed list.
+function groupMetrics(metrics: MetricSummary[]): MetricGroupBlock[] {
+  const blocks: MetricGroupBlock[] = []
+  const byId = new Map<number, MetricGroupBlock>()
+  for (const m of metrics) {
+    let block = byId.get(m.metric_group_id)
+    if (!block) {
+      block = { id: m.metric_group_id, name: m.metric_group_name, items: [] }
+      byId.set(m.metric_group_id, block)
+      blocks.push(block)
+    }
+    block.items.push(m)
+  }
+  return blocks
+}
+
 function fmtRelative(iso: string | null): string {
   if (!iso) return 'ещё не было'
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
@@ -273,24 +296,37 @@ export default function ManagerDetailPage() {
                 {metrics.length === 0 ? (
                   <div className={styles.empty}>Нет оценённых звонков за этот период</div>
                 ) : (
-                  <div className={styles.metricGrid}>
-                    {metrics.map(m => {
-                      const pct = Math.round(m.avg_score * 100)
-                      const color = scoreTierColor(m.avg_score)
-                      return (
-                        <div key={m.metric_item_id} className={styles.metricCard}>
-                          <div
-                            className={styles.metricRing}
-                            style={{ background: `conic-gradient(${color} ${pct * 3.6}deg, var(--bg-elevated) 0deg)` }}
-                          >
-                            <span className={styles.metricRingValue}>{pct}%</span>
-                          </div>
-                          <span className={styles.metricCardName}>{m.name}</span>
-                          <span className={styles.metricCardCnt}>{m.call_count} зв.</span>
+                  groupMetrics(metrics).map(group => {
+                    const groupAvg = group.items.reduce((s, i) => s + i.avg_score, 0) / group.items.length
+                    return (
+                      <div key={group.id} className={styles.metricGroupBlock}>
+                        <div className={styles.metricGroupHead}>
+                          <span className={styles.metricGroupName}>{group.name}</span>
+                          <span className={styles.metricGroupScore} style={{ color: scoreTierColor(groupAvg) }}>
+                            {Math.round(groupAvg * 100)}%
+                          </span>
                         </div>
-                      )
-                    })}
-                  </div>
+                        <div className={styles.metricGrid}>
+                          {group.items.map(m => {
+                            const pct = Math.round(m.avg_score * 100)
+                            const color = scoreTierColor(m.avg_score)
+                            return (
+                              <div key={m.metric_item_id} className={styles.metricCard}>
+                                <div
+                                  className={styles.metricRing}
+                                  style={{ background: `conic-gradient(${color} ${pct * 3.6}deg, var(--bg-elevated) 0deg)` }}
+                                >
+                                  <span className={styles.metricRingValue}>{pct}%</span>
+                                </div>
+                                <span className={styles.metricCardName}>{m.name}</span>
+                                <span className={styles.metricCardCnt}>{m.call_count} зв.</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })
                 )}
               </div>
             )}

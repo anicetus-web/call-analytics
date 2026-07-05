@@ -18,6 +18,29 @@ function scoreTierColor(avgScore: number): string {
   return QUALITY_COLORS.low
 }
 
+interface SkillGroup {
+  id: number
+  name: string
+  items: MetricSummary[]
+}
+
+// Split the flat metric list into one block per metric group (already sorted
+// group-then-position by the backend), so each group reads separately.
+function groupMetrics(metrics: MetricSummary[]): SkillGroup[] {
+  const blocks: SkillGroup[] = []
+  const byId = new Map<number, SkillGroup>()
+  for (const m of metrics) {
+    let block = byId.get(m.metric_group_id)
+    if (!block) {
+      block = { id: m.metric_group_id, name: m.metric_group_name, items: [] }
+      byId.set(m.metric_group_id, block)
+      blocks.push(block)
+    }
+    block.items.push(m)
+  }
+  return blocks
+}
+
 const chartTooltipStyle = {
   contentStyle: {
     background: 'var(--bg-elevated)',
@@ -520,8 +543,18 @@ export default function AnalyticsPage() {
                 <div className={styles.empty}>Нет оценённых звонков за этот период</div>
               ) : (
                 <div className={styles.skillsRow}>
-                  <div className={styles.metricTable}>
-                    {skills.map(m => {
+                  {groupMetrics(skills).map(group => {
+                   const groupAvg = group.items.reduce((s, i) => s + i.avg_score, 0) / group.items.length
+                   return (
+                    <div key={group.id} className={styles.skillGroup}>
+                     <div className={styles.skillGroupHead}>
+                       <span className={styles.skillGroupName}>{group.name}</span>
+                       <span className={styles.skillGroupScore} style={{ color: scoreTierColor(groupAvg) }}>
+                         {Math.round(groupAvg * 100)}%
+                       </span>
+                     </div>
+                     <div className={styles.metricTable}>
+                    {group.items.map(m => {
                       const isOpen = expandedSkill === m.metric_item_id
                       const calls = skillCalls[m.metric_item_id]
                       const pct = Math.round(m.avg_score * 100)
@@ -569,7 +602,10 @@ export default function AnalyticsPage() {
                         </div>
                       )
                     })}
-                  </div>
+                     </div>
+                    </div>
+                   )
+                  })}
                 </div>
               )}
             </div>

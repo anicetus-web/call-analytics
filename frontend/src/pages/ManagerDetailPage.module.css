@@ -216,6 +216,34 @@
   gap: 16px;
 }
 
+.metricGroupBlock {
+  padding-top: 14px;
+}
+.metricGroupBlock + .metricGroupBlock {
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.metricGroupHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.metricGroupName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.metricGroupScore {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 .metricGrid {
   display: grid;
   /* auto-fit (not auto-fill) — auto-fill reserves empty tracks for columns
