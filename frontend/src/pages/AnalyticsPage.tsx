@@ -2,10 +2,10 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
   getKpi, getTopErrors, getTopErrorCalls, getQualityDistribution, getManagersTrend, getKeywords,
-  getDurationBuckets, getMetricSummary, getProjects, getManagers,
-  Kpi, TopErrorItem, TopErrorCallItem, QualityDistribution, ManagerTrendItem, KeywordItem, DurationBucket, MetricSummary, Project, Manager,
+  getMetricSummary, getProjects, getManagers,
+  Kpi, TopErrorItem, TopErrorCallItem, QualityDistribution, ManagerTrendItem, KeywordItem, MetricSummary, Project, Manager,
 } from '../api'
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { IconTarget, IconTrend, IconAlert, IconPhoneWave } from '../components/icons'
 import Avatar from '../components/Avatar'
 import styles from './AnalyticsPage.module.css'
@@ -134,8 +134,6 @@ export default function AnalyticsPage() {
   const [managersTrend, setManagersTrend] = useState<ManagerTrendItem[]>([])
   const [keywords, setKeywords] = useState<KeywordItem[]>([])
   const [skills, setSkills] = useState<MetricSummary[]>([])
-  const [buckets, setBuckets] = useState<DurationBucket[]>([])
-  const [activeBucket, setActiveBucket] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -198,9 +196,8 @@ export default function AnalyticsPage() {
       getManagersTrend(numericProjectId),
       getKeywords(params, 16),
       skillsPromise,
-      getDurationBuckets(params),
     ])
-      .then(([kp, ql, te, mt, kw, sk, db]) => {
+      .then(([kp, ql, te, mt, kw, sk]) => {
         if (requestId !== requestIdRef.current) return
         setKpi(kp)
         setQuality(ql)
@@ -208,7 +205,6 @@ export default function AnalyticsPage() {
         setManagersTrend(mt)
         setKeywords(kw)
         setSkills(sk)
-        setBuckets(db)
       })
       .catch(() => {
         if (requestId !== requestIdRef.current) return
@@ -533,7 +529,10 @@ export default function AnalyticsPage() {
                 </div>
               </div>
             )}
+          </div>
 
+          {/* Skills take two thirds of the row, frequent words the last third. */}
+          <div className={styles.splitRow}>
             <div className={styles.section}>
               <h2 className={styles.sectionTitle}>Навыки и соблюдение скрипта</h2>
               <p className={styles.sectionDesc}>Где менеджеры стабильно теряют баллы AI</p>
@@ -629,49 +628,6 @@ export default function AnalyticsPage() {
                       <span className={styles.keywordCount}>{k.count}</span>
                     </div>
                   ))}
-                </div>
-              )}
-            </div>
-
-            <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>Распределение по длительности</h2>
-              {buckets.every(b => b.call_count === 0) ? (
-                <div className={styles.empty}>Нет данных за выбранный период</div>
-              ) : (
-                <div className={styles.durationChartWrap}>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={buckets} barCategoryGap="45%">
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                      <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} stroke="var(--border)" />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} stroke="var(--border)" width={28} />
-                      <Tooltip {...chartTooltipStyle} cursor={false} />
-                      <Bar
-                        dataKey="call_count"
-                        name="Звонков"
-                        radius={[3, 3, 0, 0]}
-                        maxBarSize={22}
-                        onMouseEnter={(_, idx) => setActiveBucket(idx)}
-                        onMouseLeave={() => setActiveBucket(null)}
-                      >
-                        {buckets.map((b, i) => (
-                          <Cell
-                            key={b.label}
-                            fill="#6366f1"
-                            style={{
-                              filter: activeBucket === i
-                                ? 'brightness(1.4) drop-shadow(0 0 6px rgba(99,102,241,0.7))'
-                                : 'none',
-                              transform: activeBucket === i ? 'scaleY(1.04)' : 'scaleY(1)',
-                              transformOrigin: 'bottom center',
-                              transformBox: 'fill-box',
-                              transition: 'transform 0.15s ease, filter 0.15s ease',
-                              cursor: 'pointer',
-                            }}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
                 </div>
               )}
             </div>
