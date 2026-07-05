@@ -386,18 +386,16 @@ export default function ProjectDetailPage() {
               : null
             const openCalls = expandedMetric !== null ? metricCalls[expandedMetric] : undefined
             const blocks = groupMetrics(metrics)
-            return (
-              <div className={`${styles.section} ${styles.sectionWide}`}>
-                <h2 className={styles.sectionTitle}>Аналитика по критериям</h2>
-                <p className={styles.sectionDesc}>
-                  Каждая группа метрик оценивается и выводится отдельно. Нажмите на критерий, чтобы
-                  увидеть конкретные звонки, где он не выполнен.
-                </p>
-                {blocks.map(block => {
-                  const groupAvg = block.items.reduce((s, i) => s + i.avg_score, 0) / block.items.length
-                  const groupPct = Math.round(groupAvg * 100)
-                  return (
-                    <div key={block.id} className={styles.metricGroupBlock}>
+            // Each metric group is its own equal-height card in the 2-up grid;
+            // a lone group spans full width so it isn't stranded next to a gap.
+            return blocks.map(block => {
+              const groupAvg = block.items.reduce((s, i) => s + i.avg_score, 0) / block.items.length
+              const groupPct = Math.round(groupAvg * 100)
+              return (
+                    <div
+                      key={block.id}
+                      className={blocks.length === 1 ? `${styles.section} ${styles.sectionWide}` : styles.section}
+                    >
                       <div className={styles.metricGroupHead}>
                         <div>
                           <span className={styles.metricGroupName}>{block.name}</span>
@@ -456,10 +454,8 @@ export default function ProjectDetailPage() {
                         </div>
                       )}
                     </div>
-                  )
-                })}
-              </div>
-            )
+              )
+            })
           })()}
 
           {managers.length > 0 && (

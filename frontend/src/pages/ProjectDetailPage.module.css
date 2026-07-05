@@ -234,14 +234,11 @@
    are too many cards to fit at that minimum. */
 .metricGrid {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(120px, 1fr);
+  /* Wrap into as many equal columns as fit — each group is now a half-width
+     card, so its criteria flow across a few rows instead of one scrolly line. */
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   gap: 10px;
-  overflow-x: auto;
-  /* overflow-x:auto makes overflow-y computed as auto too, which would clip
-     a card's upward hover lift (its pink top border got cut off). Vertical
-     padding gives the lift room inside the scroll box so nothing clips. */
-  padding: 6px 0;
+  padding: 4px 0;
 }
 
 .metricCard {
