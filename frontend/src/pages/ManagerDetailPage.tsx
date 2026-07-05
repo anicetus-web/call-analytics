@@ -2,12 +2,11 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   getManagers, getProjects, getCalls,
-  getManagerOverview, getManagerMetrics, getManagerTimeline, getManagerHeatmap,
-  Manager, Project, CallListItem, ManagerOverview, MetricSummary, CallsTimelinePoint, HeatmapCell,
+  getManagerOverview, getManagerMetrics, getManagerTimeline,
+  Manager, Project, CallListItem, ManagerOverview, MetricSummary, CallsTimelinePoint,
 } from '../api'
 import { IconPhoneWave, IconClock, IconTarget, IconTrend } from '../components/icons'
 import Avatar from '../components/Avatar'
-import Heatmap from '../components/Heatmap'
 import SessionStatus from '../components/SessionStatus'
 import styles from './ManagerDetailPage.module.css'
 
@@ -101,7 +100,6 @@ export default function ManagerDetailPage() {
   const [overview, setOverview] = useState<ManagerOverview | null>(null)
   const [metrics, setMetrics] = useState<MetricSummary[]>([])
   const [timeline, setTimeline] = useState<CallsTimelinePoint[]>([])
-  const [heatmap, setHeatmap] = useState<HeatmapCell[]>([])
   const [calls, setCalls] = useState<CallListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [managerError, setManagerError] = useState<string | null>(null)
@@ -138,15 +136,13 @@ export default function ManagerDetailPage() {
       getManagerOverview(userId, params),
       metricsPromise,
       getManagerTimeline(userId, params),
-      getManagerHeatmap(userId, params),
       getCalls({ user_id: userId, project_id: projectId, limit: 20 }),
     ])
-      .then(([ov, mt, tl, hm, cl]) => {
+      .then(([ov, mt, tl, cl]) => {
         if (requestId !== requestIdRef.current) return
         setOverview(ov)
         setMetrics(mt)
         setTimeline(tl)
-        setHeatmap(hm)
         setCalls(cl)
       })
       .catch(() => {
@@ -291,7 +287,7 @@ export default function ManagerDetailPage() {
 
           <div className={styles.grid}>
             {tab !== 'all' && (
-              <div className={styles.section}>
+              <div className={styles.section} style={{ gridColumn: '1 / -1' }}>
                 <h2 className={styles.sectionTitle}>По критериям оценки</h2>
                 {metrics.length === 0 ? (
                   <div className={styles.empty}>Нет оценённых звонков за этот период</div>
@@ -331,16 +327,7 @@ export default function ManagerDetailPage() {
               </div>
             )}
 
-            <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>Когда чаще звонит</h2>
-              {heatmap.length === 0 ? (
-                <div className={styles.empty}>Нет данных за этот период</div>
-              ) : (
-                <Heatmap cells={heatmap} />
-              )}
-            </div>
-
-            <div className={styles.section} style={tab !== 'all' ? { gridColumn: '1 / -1' } : undefined}>
+            <div className={styles.section} style={{ gridColumn: '1 / -1' }}>
               <h2 className={styles.sectionTitle}>Последние звонки</h2>
               {calls.length === 0 ? (
                 <div className={styles.empty}>Звонков пока нет</div>
