@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
+from pydantic import field_validator, Field
 
 
 class Settings(BaseSettings):
@@ -23,7 +23,23 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str
     # Comma-separated admin Telegram IDs notified on system errors (quota exhausted, etc.)
     # Example: ADMIN_TELEGRAM_IDS=123456789,987654321
-    ADMIN_TELEGRAM_IDS: list[int] = []
+    #
+    # Deliberately typed str here, not list[int]: pydantic-settings tries
+    # json.loads() on the raw env string BEFORE any field_validator runs for
+    # complex-typed (list/dict) fields, and raises SettingsError outright if
+    # that fails — which it does for "" (empty) or "123456789" (a bare int
+    # is valid JSON but the wrong shape), a validator never gets a chance to
+    # run. This bit us in production (deploy crash-looped on startup).
+    # Keeping the field a plain str sidesteps that pre-parse entirely; the
+    # ADMIN_TELEGRAM_IDS property below does the actual parsing on access.
+    ADMIN_TELEGRAM_IDS_RAW: str = Field(default="", validation_alias="ADMIN_TELEGRAM_IDS")
+
+    @property
+    def ADMIN_TELEGRAM_IDS(self) -> list[int]:
+        v = self.ADMIN_TELEGRAM_IDS_RAW.strip()
+        if not v:
+            return []
+        return [int(x.strip()) for x in v.strip("[]").split(",") if x.strip()]
 
     # --- Yandex Cloud S3 ---
     S3_ENDPOINT: str          # https://storage.yandexcloud.net
@@ -67,7 +83,20 @@ class Settings(BaseSettings):
     # and CORS is not exercised. CORS only matters when the panel and API live
     # on different origins (e.g. local Vite dev on :5173 → api on :8000).
     # Set to your production panel domain(s) via .env when deploying.
-    CORS_ORIGINS: list[str] = ["http://localhost:5173"]
+    # str, not list[str] — see ADMIN_TELEGRAM_IDS_RAW above for why.
+    CORS_ORIGINS_RAW: str = Field(default="http://localhost:5173", validation_alias="CORS_ORIGINS")
+
+    @property
+    def CORS_ORIGINS(self) -> list[str]:
+        origins = [o.strip() for o in self.CORS_ORIGINS_RAW.split(",") if o.strip()]
+        # Browsers always send a scheme in Origin headers, so origins without one
+        # would never match. Fail loudly (on first access, at app startup via
+        # api/main.py reading this immediately) rather than silently failing
+        # CORS preflights at runtime.
+        for origin in origins:
+            if not (origin.startswith("http://") or origin.startswith("https://")):
+                raise ValueError(f"CORS origin {origin!r} must start with http:// or https://")
+        return origins
 
     # --- Processing ---
     # Max retries for Whisper / LLM API failures before marking call as error
@@ -111,42 +140,6 @@ class Settings(BaseSettings):
                 f"{info.field_name} must start with http:// or https://, got {v!r}"
             )
         return v.rstrip("/")
-
-    @field_validator("ADMIN_TELEGRAM_IDS", mode="before")
-    @classmethod
-    def parse_admin_ids(cls, v: object) -> list[int]:
-        # Robust across env formats. pydantic-settings JSON-pre-parses complex
-        # fields, so the raw env value can reach here as: a comma-separated
-        # string ("123,456"), a single int (JSON-decoded "123456789"), a list
-        # (JSON-decoded "[123,456]"), or empty. Handle all of them.
-        if v is None or v == "":
-            return []
-        if isinstance(v, int):
-            return [v]
-        if isinstance(v, str):
-            # Tolerate a stray "[...]" wrapper too, then split on commas.
-            return [int(x.strip()) for x in v.strip().strip("[]").split(",") if x.strip()]
-        if isinstance(v, (list, tuple)):
-            return [int(x) for x in v]
-        return v  # type: ignore[return-value]
-
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: object) -> list[str]:
-        # Support comma-separated string from .env
-        if isinstance(v, str):
-            v = [x.strip() for x in v.split(",") if x.strip()]
-        if not isinstance(v, list):
-            raise ValueError("CORS_ORIGINS must be a list or comma-separated string")
-        # Browsers always send a scheme in Origin headers, so origins without one
-        # would never match. Catch the misconfiguration at startup instead of
-        # silently failing CORS preflights at runtime.
-        for origin in v:
-            if not (origin.startswith("http://") or origin.startswith("https://")):
-                raise ValueError(
-                    f"CORS origin {origin!r} must start with http:// or https://"
-                )
-        return v
 
     @field_validator("LLM_TEMPERATURE")
     @classmethod
@@ -192,6 +185,11 @@ class Settings(BaseSettings):
                     raise ValueError(
                         f"{name} must be at least 16 characters when DEBUG is false"
                     )
+        # Eagerly evaluate the two derived list properties so a malformed
+        # ADMIN_TELEGRAM_IDS/CORS_ORIGINS value fails at startup (matching the
+        # old fail-fast field_validator behavior), not on first request.
+        self.ADMIN_TELEGRAM_IDS  # noqa: B018
+        self.CORS_ORIGINS  # noqa: B018
 
 
 settings = Settings()
