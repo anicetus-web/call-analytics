@@ -106,9 +106,33 @@
   margin-bottom: 16px;
 }
 
+.audioHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.audioHead .sectionTitle { margin-bottom: 0; }
+
+.cloudLink {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+.cloudLink:hover { color: var(--accent-pink); }
+
 .audio {
   width: 100%;
   color-scheme: dark;
+}
+
+.audioHint {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 8px;
 }
 
 .resultsList {
@@ -194,6 +218,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+.timecodeBtn {
+  font-size: 12px;
+  color: var(--accent-blue);
+  font-variant-numeric: tabular-nums;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s;
+}
+.timecodeBtn:hover { background: var(--bg-hover); color: var(--accent-pink); }
+
 .transcript {
   font-family: inherit;
   font-size: 14px;
@@ -202,6 +239,42 @@
   color: var(--text-muted);
   max-height: 400px;
   overflow-y: auto;
+}
+
+.transcriptSegments {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.segmentRow {
+  display: flex;
+  gap: 12px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.segmentRowClickable {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.segmentRowClickable:hover { background: var(--bg-hover); }
+
+.segmentTime {
+  flex-shrink: 0;
+  width: 42px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-blue);
+  padding-top: 1px;
+}
+
+.segmentText {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted);
 }
 
 .processing {

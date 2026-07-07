@@ -105,9 +105,16 @@ class AnalysisResultOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class TranscriptSegmentOut(BaseModel):
+    start: float
+    end: float
+    text: str
+
+
 class TranscriptionOut(BaseModel):
     full_text: str
     language: str | None
+    segments: list[TranscriptSegmentOut]
 
     model_config = {"from_attributes": True}
 
@@ -316,6 +323,9 @@ async def get_call(
         transcription_out = TranscriptionOut(
             full_text=call.transcription.full_text,
             language=call.language,
+            segments=[
+                TranscriptSegmentOut(**seg) for seg in (call.transcription.segments or [])
+            ],
         )
 
     results_out = []

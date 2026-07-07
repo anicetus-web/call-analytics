@@ -36,6 +36,14 @@ export default function CallDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [reprocessing, setReprocessing] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  function seekTo(seconds: number) {
+    if (audioRef.current) {
+      audioRef.current.currentTime = seconds
+      audioRef.current.play().catch(() => {})
+    }
+  }
 
   function stopPolling() {
     if (pollRef.current) {
@@ -148,8 +156,16 @@ export default function CallDetailPage() {
 
       {audioUrl && (
         <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>Запись</h2>
-          <audio controls src={audioUrl} className={styles.audio} />
+          <div className={styles.audioHead}>
+            <h2 className={styles.sectionTitle}>Запись</h2>
+            <a href={audioUrl} target="_blank" rel="noopener noreferrer" className={styles.cloudLink}>
+              Открыть в облаке ↗
+            </a>
+          </div>
+          <audio ref={audioRef} controls src={audioUrl} className={styles.audio} />
+          <p className={styles.audioHint}>
+            Ссылка на файл в облачном хранилище действует ограниченное время — открывайте со страницы звонка.
+          </p>
         </div>
       )}
 
@@ -198,7 +214,17 @@ export default function CallDetailPage() {
                 </span>
                 <span className={styles.itemName}>{r.metric_item_name}</span>
                 {r.timecode_start != null && (
-                  <span className={styles.timecode}>{fmtSeconds(r.timecode_start)}</span>
+                  audioUrl ? (
+                    <button
+                      type="button"
+                      className={styles.timecodeBtn}
+                      onClick={() => seekTo(r.timecode_start!)}
+                    >
+                      ▶ {fmtSeconds(r.timecode_start)}
+                    </button>
+                  ) : (
+                    <span className={styles.timecode}>{fmtSeconds(r.timecode_start)}</span>
+                  )
                 )}
               </div>
             ))}
@@ -209,7 +235,22 @@ export default function CallDetailPage() {
       {call.transcription && (
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Транскрипция</h2>
-          <pre className={styles.transcript}>{call.transcription.full_text}</pre>
+          {call.transcription.segments.length > 0 ? (
+            <div className={styles.transcriptSegments}>
+              {call.transcription.segments.map((seg, i) => (
+                <div
+                  key={i}
+                  className={audioUrl ? `${styles.segmentRow} ${styles.segmentRowClickable}` : styles.segmentRow}
+                  onClick={audioUrl ? () => seekTo(seg.start) : undefined}
+                >
+                  <span className={styles.segmentTime}>{fmtSeconds(seg.start)}</span>
+                  <span className={styles.segmentText}>{seg.text}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <pre className={styles.transcript}>{call.transcription.full_text}</pre>
+          )}
         </div>
       )}
 

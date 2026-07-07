@@ -206,7 +206,11 @@ export interface CallDetail extends CallListItem {
   comment: string | null
   language: string | null
   error_message: string | null
-  transcription: { full_text: string; language: string | null } | null
+  transcription: {
+    full_text: string
+    language: string | null
+    segments: { start: number; end: number; text: string }[]
+  } | null
   analysis_results: AnalysisResult[]
   ai_analysis: QualitativeAnalysis | null
 }
