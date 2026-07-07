@@ -551,3 +551,73 @@
   display: flex;
   gap: 10px;
 }
+
+.qualList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qualCard {
+  background: var(--bg-hover);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+
+.qualCardHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.qualGroupBadge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-pink);
+  background: rgba(236,72,153,0.12);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.qualManager {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  transition: color 0.15s;
+}
+.qualManager:hover { color: var(--accent-pink); }
+
+.qualCardDate {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-left: auto;
+}
+
+.qualCallLink {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  transition: color 0.15s;
+}
+.qualCallLink:hover { color: var(--accent-pink); }
+
+.qualSummary {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.qualRow {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.qualLabelWeak {
+  color: #fca5a5;
+  font-weight: 600;
+  margin-right: 6px;
+}
+.qualValueWeak { color: #fca5a5; }

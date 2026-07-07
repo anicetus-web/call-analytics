@@ -2,12 +2,12 @@ import { useEffect, useState, useCallback, FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   getProject, getCalls, getMetricSummary, getManagerSummary, getTimeline,
-  getManagerScoreTimeline, getTopErrorCalls,
+  getManagerScoreTimeline, getTopErrorCalls, getProjectQualitative,
   updateProject, archiveProject, addMember, removeMember, getManagers, createManager,
   getMetricGroups, createMetricGroup, updateMetricGroup, deleteMetricGroup,
   createMetricItem, updateMetricItem, deleteMetricItem,
   Project, CallListItem, MetricSummary, ManagerSummary, TimelinePoint,
-  Manager, MetricGroup, MetricGroupType, TopErrorCallItem,
+  Manager, MetricGroup, MetricGroupType, TopErrorCallItem, QualitativeCallSummary,
 } from '../api'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Modal from '../components/Modal'
@@ -259,6 +259,22 @@ export default function ProjectDetailPage() {
 
   useEffect(() => { loadTimeline() }, [loadTimeline])
 
+  // Reuses the same period + manager filter as "Средний балл по дням" above
+  // it, instead of a separate set of controls.
+  const [qualitative, setQualitative] = useState<QualitativeCallSummary[]>([])
+  const [qualLoading, setQualLoading] = useState(true)
+  useEffect(() => {
+    setQualLoading(true)
+    const { dateFrom, dateTo } = presetRange(timeRange)
+    getProjectQualitative(projectId, {
+      userId: timelineManagerId ? Number(timelineManagerId) : undefined,
+      dateFrom, dateTo,
+    })
+      .then(setQualitative)
+      .catch(() => setQualitative([]))
+      .finally(() => setQualLoading(false))
+  }, [projectId, timeRange, timelineManagerId])
+
   if (loading) return <div className={styles.state}>Загрузка…</div>
   if (error) return <div className={`${styles.state} ${styles.error}`}>{error}</div>
   if (!project) return <div className={styles.state}>Проект не найден</div>
@@ -377,6 +393,42 @@ export default function ProjectDetailPage() {
                   <Line type="monotone" dataKey="avg_score" stroke="#ec4899" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className={`${styles.section} ${styles.sectionWide}`}>
+            <h2 className={styles.sectionTitle}>Разбор AI по звонкам</h2>
+            <p className={styles.sectionDesc}>
+              Боли клиента, как отработал менеджер, слабые места — по каждой группе метрик отдельно
+            </p>
+            {qualLoading ? (
+              <div className={styles.empty}>Загрузка…</div>
+            ) : qualitative.length === 0 ? (
+              <div className={styles.empty}>Нет разобранных звонков за этот период</div>
+            ) : (
+              <div className={styles.qualList}>
+                {qualitative.map(q => (
+                  <div key={`${q.call_id}-${q.metric_group_id}`} className={styles.qualCard}>
+                    <div className={styles.qualCardHead}>
+                      <span className={styles.qualGroupBadge}>{q.metric_group_name}</span>
+                      <Link to={`/managers/${q.manager_id}`} className={styles.qualManager}>
+                        {q.manager_name}
+                      </Link>
+                      <span className={styles.qualCardDate}>
+                        {new Date(q.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <Link to={`/calls/${q.call_id}`} className={styles.qualCallLink}>Звонок →</Link>
+                    </div>
+                    {q.summary && <p className={styles.qualSummary}>{q.summary}</p>}
+                    {q.weak_spots.length > 0 && (
+                      <div className={styles.qualRow}>
+                        <span className={styles.qualLabelWeak}>Усилить:</span>
+                        <span className={styles.qualValueWeak}>{q.weak_spots.join(' · ')}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

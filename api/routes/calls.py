@@ -47,7 +47,7 @@ from api.auth import require_admin, TokenData
 from config import settings
 from database import (
     Call, CallStatus, Project, ProjectMember, User, Transcription,
-    AnalysisResult, get_db,
+    AnalysisResult, CallGroupAnalysis, get_db,
 )
 from services import storage
 from services import task_queue
@@ -119,7 +119,9 @@ class TranscriptionOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class QualitativeAnalysisOut(BaseModel):
+class GroupAnalysisOut(BaseModel):
+    metric_group_id: int
+    metric_group_name: str
     pains_found: list[str]
     pains_addressed: str
     weak_spots: list[str]
@@ -139,7 +141,7 @@ class CallDetailOut(BaseModel):
     created_at: datetime
     transcription: TranscriptionOut | None
     analysis_results: list[AnalysisResultOut]
-    ai_analysis: QualitativeAnalysisOut | None
+    group_analyses: list[GroupAnalysisOut]
 
     model_config = {"from_attributes": True}
 
@@ -312,6 +314,7 @@ async def get_call(
         .options(
             selectinload(Call.transcription),
             selectinload(Call.analysis_results).selectinload(AnalysisResult.metric_item),
+            selectinload(Call.group_analyses).selectinload(CallGroupAnalysis.metric_group),
         )
     )
     call = result.scalar_one_or_none()
@@ -340,7 +343,17 @@ async def get_call(
             ))
     results_out.sort(key=lambda x: x.position)
 
-    ai_analysis_out = QualitativeAnalysisOut(**call.ai_analysis) if call.ai_analysis else None
+    group_analyses_out = [
+        GroupAnalysisOut(
+            metric_group_id=ga.metric_group_id,
+            metric_group_name=ga.metric_group.name,
+            pains_found=ga.pains_found,
+            pains_addressed=ga.pains_addressed,
+            weak_spots=ga.weak_spots,
+            summary=ga.summary,
+        )
+        for ga in call.group_analyses
+    ]
 
     return CallDetailOut(
         id=call.id,
@@ -355,7 +368,7 @@ async def get_call(
         created_at=call.created_at,
         transcription=transcription_out,
         analysis_results=results_out,
-        ai_analysis=ai_analysis_out,
+        group_analyses=group_analyses_out,
     )
 
 

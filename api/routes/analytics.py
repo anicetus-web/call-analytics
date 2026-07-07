@@ -49,7 +49,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import require_admin, TokenData
 from database import (
-    Project, Call, CallStatus, AnalysisResult, MetricItem, MetricGroup, User, Transcription, get_db,
+    Project, Call, CallStatus, AnalysisResult, MetricItem, MetricGroup, CallGroupAnalysis,
+    User, Transcription, get_db,
 )
 
 # Common Russian stopwords + filler words, excluded from the keyword-frequency endpoint.
@@ -1040,16 +1041,61 @@ async def keywords(
     return [KeywordItem(word=w, count=c) for w, c in counter.most_common(limit)]
 
 
-# ── Per-manager qualitative analysis (pains / weak spots / summary) ──────────
+# ── Qualitative analysis (pains / weak spots / summary), per metric group ────
+# One call can carry several of these — one per metric group (sales checklist,
+# forbidden words, script sequence, ...) — instead of one blended-together read.
 
 class QualitativeCallSummary(BaseModel):
     call_id: int
     project_id: int
+    manager_id: int
+    manager_name: str
+    metric_group_id: int
+    metric_group_name: str
     created_at: str
     pains_found: list[str]
     pains_addressed: str
     weak_spots: list[str]
     summary: str
+
+
+async def _fetch_qualitative(
+    db: AsyncSession, *,
+    user_id: int | None, project_id: int | None,
+    date_from: date | None, date_to: date | None, limit: int,
+) -> list[QualitativeCallSummary]:
+    q = _apply_common_filters(
+        select(
+            Call.id, Call.project_id, Call.user_id, User.name.label("manager_name"),
+            Call.created_at,
+            CallGroupAnalysis.metric_group_id, MetricGroup.name.label("group_name"),
+            CallGroupAnalysis.pains_found, CallGroupAnalysis.pains_addressed,
+            CallGroupAnalysis.weak_spots, CallGroupAnalysis.summary,
+        )
+        .join(CallGroupAnalysis, CallGroupAnalysis.call_id == Call.id)
+        .join(MetricGroup, MetricGroup.id == CallGroupAnalysis.metric_group_id)
+        .join(User, User.id == Call.user_id)
+        .order_by(Call.created_at.desc())
+        .limit(limit),
+        project_id=project_id, date_from=date_from, date_to=date_to, user_id=user_id,
+    )
+    rows = (await db.execute(q)).all()
+    return [
+        QualitativeCallSummary(
+            call_id=r.id,
+            project_id=r.project_id,
+            manager_id=r.user_id,
+            manager_name=r.manager_name,
+            metric_group_id=r.metric_group_id,
+            metric_group_name=r.group_name,
+            created_at=r.created_at.isoformat(),
+            pains_found=r.pains_found or [],
+            pains_addressed=r.pains_addressed or "",
+            weak_spots=r.weak_spots or [],
+            summary=r.summary or "",
+        )
+        for r in rows
+    ]
 
 
 @router.get("/managers/{user_id}/qualitative", response_model=list[QualitativeCallSummary])
@@ -1062,28 +1108,29 @@ async def manager_qualitative(
     date_to: date | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),
 ) -> list[QualitativeCallSummary]:
-    """Claude's qualitative read (pains surfaced, how addressed, weak spots to
-    strengthen, short human summary) for this manager's calls in the period —
-    backs the day/week/month/all-time filter on the manager page."""
+    """AI's qualitative read (pains surfaced, how addressed, weak spots to
+    strengthen, short human summary), one row per (call, metric group), for
+    this manager's calls in the period — backs the period filter on the
+    manager page."""
     await _assert_user_exists(db, user_id)
-
-    q = _apply_common_filters(
-        select(Call.id, Call.project_id, Call.created_at, Call.ai_analysis)
-        .where(Call.ai_analysis.isnot(None))
-        .order_by(Call.created_at.desc())
-        .limit(limit),
-        project_id=project_id, date_from=date_from, date_to=date_to, user_id=user_id,
+    return await _fetch_qualitative(
+        db, user_id=user_id, project_id=project_id, date_from=date_from, date_to=date_to, limit=limit,
     )
-    rows = (await db.execute(q)).all()
-    return [
-        QualitativeCallSummary(
-            call_id=r.id,
-            project_id=r.project_id,
-            created_at=r.created_at.isoformat(),
-            pains_found=r.ai_analysis.get("pains_found") or [],
-            pains_addressed=r.ai_analysis.get("pains_addressed") or "",
-            weak_spots=r.ai_analysis.get("weak_spots") or [],
-            summary=r.ai_analysis.get("summary") or "",
-        )
-        for r in rows
-    ]
+
+
+@router.get("/projects/{project_id}/qualitative", response_model=list[QualitativeCallSummary])
+async def project_qualitative(
+    project_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    user_id: int | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=100),
+) -> list[QualitativeCallSummary]:
+    """Same qualitative feed, scoped to a project instead of a manager — shows
+    every manager's calls in that project (each row carries manager_name)."""
+    await _assert_project_exists(db, project_id)
+    return await _fetch_qualitative(
+        db, user_id=user_id, project_id=project_id, date_from=date_from, date_to=date_to, limit=limit,
+    )

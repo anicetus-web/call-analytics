@@ -9,6 +9,7 @@ from .models import (
     Call, CallStatus,
     Transcription,
     AnalysisResult,
+    CallGroupAnalysis,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "Call", "CallStatus",
     "Transcription",
     "AnalysisResult",
+    "CallGroupAnalysis",
 ]

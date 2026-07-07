@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import settings
 from database import (
     Call, CallStatus, Transcription, AnalysisResult,
-    MetricGroup, AsyncSessionLocal,
+    MetricGroup, CallGroupAnalysis, AsyncSessionLocal,
 )
 from database.connection import engine
 from services.file_converter import convert_for_whisper, ConversionError
@@ -308,20 +308,39 @@ async def _run_pipeline(session: AsyncSession, call: Call) -> None:
 
                 # Qualitative read (pains surfaced, how they were handled, weak
                 # spots, a short human summary) — separate from per-criterion
-                # scores above. Grounded in the SAME criteria shown on the
-                # dashboard (not the raw prompt_template, which still has its
-                # unsubstituted {items}/{transcription} placeholders). A
-                # failure here must not fail the call — the per-criterion
-                # scores above are the load-bearing result.
-                context_parts = []
+                # scores above, and done ONCE PER GROUP (not once for the whole
+                # call): a sales checklist and a forbidden-words group need
+                # very different qualitative commentary, so blending them into
+                # one summary loses the specificity a manager/project/call
+                # view actually wants. Grounded in the SAME criteria shown on
+                # the dashboard for that group (not the raw prompt_template,
+                # which still has its unsubstituted {items}/{transcription}
+                # placeholders). A failure on one group must not fail the
+                # call or block other groups — the per-criterion scores above
+                # are the load-bearing result.
+                existing_group_analyses = await session.execute(
+                    select(CallGroupAnalysis).where(CallGroupAnalysis.call_id == call.id)
+                )
+                for row in existing_group_analyses.scalars().all():
+                    await session.delete(row)
+                await session.flush()
+
                 for g in metric_groups:
                     active = [item.name for item in g.items if item.is_active]
-                    if active:
-                        context_parts.append(f"{g.name}:\n" + "\n".join(f"- {n}" for n in active))
-                product_context = "\n\n".join(context_parts)[:6000]
-                call.ai_analysis = await analyze_call_qualitative(
-                    call.transcription.full_text, product_context,
-                )
+                    if not active:
+                        continue
+                    group_context = f"{g.name}:\n" + "\n".join(f"- {n}" for n in active)
+                    qual = await analyze_call_qualitative(call.transcription.full_text, group_context)
+                    if qual is None:
+                        continue
+                    session.add(CallGroupAnalysis(
+                        call_id=call.id,
+                        metric_group_id=g.id,
+                        pains_found=qual["pains_found"],
+                        pains_addressed=qual["pains_addressed"],
+                        weak_spots=qual["weak_spots"],
+                        summary=qual["summary"],
+                    ))
 
             await _set_status(session, call, CallStatus.DONE)
 

@@ -195,7 +195,9 @@ export interface CallListItem {
   created_at: string
 }
 
-export interface QualitativeAnalysis {
+export interface GroupAnalysis {
+  metric_group_id: number
+  metric_group_name: string
   pains_found: string[]
   pains_addressed: string
   weak_spots: string[]
@@ -212,7 +214,7 @@ export interface CallDetail extends CallListItem {
     segments: { start: number; end: number; text: string }[]
   } | null
   analysis_results: AnalysisResult[]
-  ai_analysis: QualitativeAnalysis | null
+  group_analyses: GroupAnalysis[]
 }
 
 export interface AnalysisResult {
@@ -429,6 +431,10 @@ export const getManagerTimeline = (userId: number, params: GlobalAnalyticsParams
 export interface QualitativeCallSummary {
   call_id: number
   project_id: number
+  manager_id: number
+  manager_name: string
+  metric_group_id: number
+  metric_group_name: string
   created_at: string
   pains_found: string[]
   pains_addressed: string
@@ -438,6 +444,9 @@ export interface QualitativeCallSummary {
 
 export const getManagerQualitative = (userId: number, params: GlobalAnalyticsParams = {}) =>
   api.get<QualitativeCallSummary[]>(`/analytics/managers/${userId}/qualitative`, { params: globalParams(params) }).then(r => r.data)
+
+export const getProjectQualitative = (projectId: number, params: GlobalAnalyticsParams = {}) =>
+  api.get<QualitativeCallSummary[]>(`/analytics/projects/${projectId}/qualitative`, { params: globalParams(params) }).then(r => r.data)
 
 export const getManagerScoreTimeline = (userId: number, params: GlobalAnalyticsParams = {}) =>
   api.get<TimelinePoint[]>(`/analytics/managers/${userId}/score-timeline`, { params: globalParams(params) }).then(r => r.data)

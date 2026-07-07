@@ -205,10 +205,6 @@ class Call(Base):
     )
     language: Mapped[Optional[str]] = mapped_column(String(10))
     error_message: Mapped[Optional[str]] = mapped_column(Text)
-    # Qualitative Claude analysis, separate from the 0/0.5/1 per-criterion scores:
-    # {"pains": [...], "pains_addressed": "...", "weak_spots": [...], "summary": "..."}.
-    # JSONB (not columns) so the shape can evolve without a migration per field.
-    ai_analysis: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # Server-side: a Postgres trigger (trg_set_updated_at) keeps this current on
     # any UPDATE, including bulk session.execute(). onupdate is belt-and-suspenders
@@ -221,6 +217,7 @@ class Call(Base):
     user: Mapped["User"] = relationship(back_populates="calls")
     transcription: Mapped[Optional["Transcription"]] = relationship(back_populates="call", uselist=False)
     analysis_results: Mapped[list["AnalysisResult"]] = relationship(back_populates="call")
+    group_analyses: Mapped[list["CallGroupAnalysis"]] = relationship(back_populates="call")
 
 
 class Transcription(Base):
@@ -277,3 +274,37 @@ class AnalysisResult(Base):
 
     call: Mapped["Call"] = relationship(back_populates="analysis_results")
     metric_item: Mapped["MetricItem"] = relationship(back_populates="analysis_results")
+
+
+class CallGroupAnalysis(Base):
+    """Qualitative (free-text) AI read of a call, scoped to ONE metric group —
+    separate from AnalysisResult's per-criterion 0/0.5/1 scores. A call with 4
+    metric groups (sales checklist, forbidden words, script sequence, sales
+    stages) gets up to 4 of these rows, one per group, each read in that
+    group's own terms (e.g. "боли клиента" makes sense for a sales checklist,
+    "нарушения" makes more sense for a forbidden-words group)."""
+    __tablename__ = "call_group_analyses"
+    __repr_fields__ = ("id", "call_id", "metric_group_id")
+    __table_args__ = (
+        # On reprocess: UPDATE existing row instead of INSERT.
+        UniqueConstraint("call_id", "metric_group_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    call_id: Mapped[int] = mapped_column(Integer, ForeignKey("calls.id", ondelete="CASCADE"))
+    # RESTRICT: groups aren't soft-deleted like metric items, but a group with
+    # historical analysis shouldn't disappear out from under it either.
+    metric_group_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("metric_groups.id", ondelete="RESTRICT"), nullable=False
+    )
+    pains_found: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    pains_addressed: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    weak_spots: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    summary: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    call: Mapped["Call"] = relationship(back_populates="group_analyses")
+    metric_group: Mapped["MetricGroup"] = relationship()

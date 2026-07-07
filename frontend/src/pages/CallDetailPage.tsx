@@ -154,34 +154,40 @@ export default function CallDetailPage() {
         </div>
       )}
 
-      {call.ai_analysis && (
+      {call.group_analyses.length > 0 && (
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Разбор AI</h2>
-          {call.ai_analysis.summary && (
-            <p className={styles.aiSummary}>{call.ai_analysis.summary}</p>
-          )}
-          {call.ai_analysis.pains_found.length > 0 && (
-            <div className={styles.aiBlock}>
-              <div className={styles.aiBlockTitle}>Боли клиента в этом звонке</div>
-              <ul className={styles.aiList}>
-                {call.ai_analysis.pains_found.map((p, i) => <li key={i}>{p}</li>)}
-              </ul>
+          <p className={styles.sectionDesc}>Отдельно по каждой группе метрик</p>
+          {call.group_analyses.map(ga => (
+            <div key={ga.metric_group_id} className={styles.aiGroup}>
+              <div className={styles.aiGroupName}>{ga.metric_group_name}</div>
+              {ga.summary && (
+                <p className={styles.aiSummary}>{ga.summary}</p>
+              )}
+              {ga.pains_found.length > 0 && (
+                <div className={styles.aiBlock}>
+                  <div className={styles.aiBlockTitle}>Боли клиента в этом звонке</div>
+                  <ul className={styles.aiList}>
+                    {ga.pains_found.map((p, i) => <li key={i}>{p}</li>)}
+                  </ul>
+                </div>
+              )}
+              {ga.pains_addressed && (
+                <div className={styles.aiBlock}>
+                  <div className={styles.aiBlockTitle}>Как отработал</div>
+                  <p className={styles.aiText}>{ga.pains_addressed}</p>
+                </div>
+              )}
+              {ga.weak_spots.length > 0 && (
+                <div className={styles.aiBlock}>
+                  <div className={styles.aiBlockTitle}>Слабые места — что усилить</div>
+                  <ul className={styles.aiListWeak}>
+                    {ga.weak_spots.map((w, i) => <li key={i}>{w}</li>)}
+                  </ul>
+                </div>
+              )}
             </div>
-          )}
-          {call.ai_analysis.pains_addressed && (
-            <div className={styles.aiBlock}>
-              <div className={styles.aiBlockTitle}>Как отработал</div>
-              <p className={styles.aiText}>{call.ai_analysis.pains_addressed}</p>
-            </div>
-          )}
-          {call.ai_analysis.weak_spots.length > 0 && (
-            <div className={styles.aiBlock}>
-              <div className={styles.aiBlockTitle}>Слабые места — что усилить</div>
-              <ul className={styles.aiListWeak}>
-                {call.ai_analysis.weak_spots.map((w, i) => <li key={i}>{w}</li>)}
-              </ul>
-            </div>
-          )}
+          ))}
         </div>
       )}
 

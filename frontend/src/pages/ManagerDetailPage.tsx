@@ -338,8 +338,9 @@ export default function ManagerDetailPage() {
             ) : (
               <div className={styles.qualList}>
                 {qualitative.map(q => (
-                  <Link to={`/calls/${q.call_id}`} key={q.call_id} className={styles.qualCard}>
+                  <Link to={`/calls/${q.call_id}`} key={`${q.call_id}-${q.metric_group_id}`} className={styles.qualCard}>
                     <div className={styles.qualCardDate}>
+                      <span className={styles.qualGroupBadge}>{q.metric_group_name}</span>
                       {new Date(q.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </div>
                     {q.summary && <p className={styles.qualSummary}>{q.summary}</p>}
