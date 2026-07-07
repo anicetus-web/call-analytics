@@ -2,7 +2,10 @@
 FFmpeg-based audio/video conversion.
 
 Responsibilities:
-- Convert any audio/video format to mono WAV 16kHz (optimal for Whisper)
+- Convert any audio/video format to mono 16kHz Ogg/Opus for Whisper.
+  Opus (not WAV): the Whisper API rejects uploads over 25 MB, and 16kHz mono
+  PCM WAV hits that at ~13 minutes of audio. Speech-tuned Opus at 32 kbps
+  keeps ~1.7 hours under the limit with no meaningful accuracy loss.
 - Extract duration in seconds
 - Validate that the input file is a valid media file
 
@@ -91,9 +94,10 @@ async def get_duration(input_path: str) -> float:
         raise ConversionError(f"Invalid duration value: {duration_str!r}") from exc
 
 
-async def convert_to_wav(input_path: str, output_path: str) -> ConversionResult:
+async def convert_for_whisper(input_path: str, output_path: str) -> ConversionResult:
     """
-    Convert input_path to 16kHz mono WAV at output_path.
+    Convert input_path to 16kHz mono Ogg/Opus at output_path (must end in .ogg —
+    the OpenAI SDK infers the container format from the filename).
     Returns ConversionResult with output path and duration.
     Raises ConversionError on failure.
     """
@@ -106,8 +110,10 @@ async def convert_to_wav(input_path: str, output_path: str) -> ConversionResult:
         "-i", input_path,
         "-ar", "16000",          # 16kHz sample rate — optimal for Whisper
         "-ac", "1",              # mono
-        "-c:a", "pcm_s16le",     # 16-bit PCM WAV
+        "-c:a", "libopus",       # speech-tuned codec; keeps long calls under Whisper's 25 MB cap
+        "-b:a", "32k",
         "-vn",                   # strip video stream if present
+        "-f", "ogg",
         output_path,
     ]
     code, _, stderr = await _run(cmd)

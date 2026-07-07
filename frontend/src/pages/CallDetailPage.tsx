@@ -153,6 +153,37 @@ export default function CallDetailPage() {
         </div>
       )}
 
+      {call.ai_analysis && (
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>Разбор AI</h2>
+          {call.ai_analysis.summary && (
+            <p className={styles.aiSummary}>{call.ai_analysis.summary}</p>
+          )}
+          {call.ai_analysis.pains_found.length > 0 && (
+            <div className={styles.aiBlock}>
+              <div className={styles.aiBlockTitle}>Боли клиента в этом звонке</div>
+              <ul className={styles.aiList}>
+                {call.ai_analysis.pains_found.map((p, i) => <li key={i}>{p}</li>)}
+              </ul>
+            </div>
+          )}
+          {call.ai_analysis.pains_addressed && (
+            <div className={styles.aiBlock}>
+              <div className={styles.aiBlockTitle}>Как отработал</div>
+              <p className={styles.aiText}>{call.ai_analysis.pains_addressed}</p>
+            </div>
+          )}
+          {call.ai_analysis.weak_spots.length > 0 && (
+            <div className={styles.aiBlock}>
+              <div className={styles.aiBlockTitle}>Слабые места — что усилить</div>
+              <ul className={styles.aiListWeak}>
+                {call.ai_analysis.weak_spots.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       {call.analysis_results.length > 0 && (
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Оценка по критериям</h2>

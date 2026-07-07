@@ -1038,3 +1038,52 @@ async def keywords(
                 counter[word] += 1
 
     return [KeywordItem(word=w, count=c) for w, c in counter.most_common(limit)]
+
+
+# ── Per-manager qualitative analysis (pains / weak spots / summary) ──────────
+
+class QualitativeCallSummary(BaseModel):
+    call_id: int
+    project_id: int
+    created_at: str
+    pains_found: list[str]
+    pains_addressed: str
+    weak_spots: list[str]
+    summary: str
+
+
+@router.get("/managers/{user_id}/qualitative", response_model=list[QualitativeCallSummary])
+async def manager_qualitative(
+    user_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    project_id: int | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=100),
+) -> list[QualitativeCallSummary]:
+    """Claude's qualitative read (pains surfaced, how addressed, weak spots to
+    strengthen, short human summary) for this manager's calls in the period —
+    backs the day/week/month/all-time filter on the manager page."""
+    await _assert_user_exists(db, user_id)
+
+    q = _apply_common_filters(
+        select(Call.id, Call.project_id, Call.created_at, Call.ai_analysis)
+        .where(Call.ai_analysis.isnot(None))
+        .order_by(Call.created_at.desc())
+        .limit(limit),
+        project_id=project_id, date_from=date_from, date_to=date_to, user_id=user_id,
+    )
+    rows = (await db.execute(q)).all()
+    return [
+        QualitativeCallSummary(
+            call_id=r.id,
+            project_id=r.project_id,
+            created_at=r.created_at.isoformat(),
+            pains_found=r.ai_analysis.get("pains_found") or [],
+            pains_addressed=r.ai_analysis.get("pains_addressed") or "",
+            weak_spots=r.ai_analysis.get("weak_spots") or [],
+            summary=r.ai_analysis.get("summary") or "",
+        )
+        for r in rows
+    ]

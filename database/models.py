@@ -187,8 +187,9 @@ class Call(Base):
     # original_file_path: the raw uploaded file as received (e.g. "calls/42/original.ogg").
     #   Set once at upload, NEVER overwritten — guarantees the source is never lost.
     original_file_path: Mapped[Optional[str]] = mapped_column(String(500))
-    # file_path: the processed 16kHz mono WAV that Whisper transcribes.
-    #   None until FFmpeg conversion completes and the WAV is uploaded to S3.
+    # file_path: the processed 16kHz mono audio that Whisper transcribes
+    #   (audio.ogg for new calls; legacy rows may still point at audio.wav).
+    #   None until FFmpeg conversion completes and the file is uploaded to S3.
     file_path: Mapped[Optional[str]] = mapped_column(String(500))
     original_filename: Mapped[Optional[str]] = mapped_column(String(500))
     # Set by FFmpeg during the CONVERTING stage.
@@ -204,6 +205,10 @@ class Call(Base):
     )
     language: Mapped[Optional[str]] = mapped_column(String(10))
     error_message: Mapped[Optional[str]] = mapped_column(Text)
+    # Qualitative Claude analysis, separate from the 0/0.5/1 per-criterion scores:
+    # {"pains": [...], "pains_addressed": "...", "weak_spots": [...], "summary": "..."}.
+    # JSONB (not columns) so the shape can evolve without a migration per field.
+    ai_analysis: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # Server-side: a Postgres trigger (trg_set_updated_at) keeps this current on
     # any UPDATE, including bulk session.execute(). onupdate is belt-and-suspenders

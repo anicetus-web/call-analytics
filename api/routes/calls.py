@@ -112,6 +112,13 @@ class TranscriptionOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class QualitativeAnalysisOut(BaseModel):
+    pains_found: list[str]
+    pains_addressed: str
+    weak_spots: list[str]
+    summary: str
+
+
 class CallDetailOut(BaseModel):
     id: int
     project_id: int
@@ -125,6 +132,7 @@ class CallDetailOut(BaseModel):
     created_at: datetime
     transcription: TranscriptionOut | None
     analysis_results: list[AnalysisResultOut]
+    ai_analysis: QualitativeAnalysisOut | None
 
     model_config = {"from_attributes": True}
 
@@ -144,7 +152,11 @@ class CallListItem(BaseModel):
 # ── Bot authentication ────────────────────────────────────────────────────────
 
 def _verify_bot_secret(x_bot_secret: str | None = Header(default=None)) -> None:
-    if x_bot_secret is None or not hmac.compare_digest(x_bot_secret, settings.BOT_SECRET):
+    # compare_digest needs bytes when non-ASCII is possible — a str comparison
+    # would raise TypeError (→ 500) on a crafted header instead of returning 401.
+    if x_bot_secret is None or not hmac.compare_digest(
+        x_bot_secret.encode("utf-8"), settings.BOT_SECRET.encode("utf-8")
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid bot secret",
@@ -194,38 +206,42 @@ async def upload_call(
             detail="User is not a member of this project",
         )
 
-    # Read file, validate size
-    content = await file.read()
-    if len(content) > _MAX_FILE_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File exceeds {_MAX_FILE_SIZE_MB} MB limit",
-        )
-    if len(content) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Uploaded file is empty",
-        )
-
-    # Create Call record (get ID before S3 upload so key includes call_id)
-    call = Call(
-        project_id=project_id,
-        user_id=user_id,
-        original_filename=filename,
-        comment=comment,
-        status=CallStatus.UPLOADED,
-    )
-    db.add(call)
-    await db.flush()  # populates call.id
-
-    # Upload the ORIGINAL file to S3 under a stable key. This file is never overwritten;
-    # the converted WAV is later stored under a separate key (audio.wav).
-    original_key = storage.build_key(call.id, f"original{ext}")
-    tmp_path = os.path.join(settings.TEMP_DIR, f"upload_{call.id}_{uuid.uuid4().hex}{ext}")
+    # Stream the upload to a temp file in chunks — buffering the whole body in
+    # memory would cost up to _MAX_FILE_SIZE_MB of RAM per concurrent request.
     os.makedirs(settings.TEMP_DIR, exist_ok=True)
+    tmp_path = os.path.join(settings.TEMP_DIR, f"upload_{uuid.uuid4().hex}{ext}")
     try:
+        size = 0
         with open(tmp_path, "wb") as fh:
-            fh.write(content)
+            while chunk := await file.read(1024 * 1024):
+                size += len(chunk)
+                if size > _MAX_FILE_BYTES:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=f"File exceeds {_MAX_FILE_SIZE_MB} MB limit",
+                    )
+                fh.write(chunk)
+        if size == 0:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Uploaded file is empty",
+            )
+
+        # Create Call record (get ID before S3 upload so key includes call_id)
+        call = Call(
+            project_id=project_id,
+            user_id=user_id,
+            original_filename=filename,
+            comment=comment,
+            status=CallStatus.UPLOADED,
+        )
+        db.add(call)
+        await db.flush()  # populates call.id
+
+        # Upload the ORIGINAL file to S3 under a stable key. This file is never
+        # overwritten; the converted audio is later stored under a separate key
+        # (audio.ogg).
+        original_key = storage.build_key(call.id, f"original{ext}")
         await storage.upload_file(tmp_path, original_key)
     finally:
         if os.path.exists(tmp_path):
@@ -314,6 +330,8 @@ async def get_call(
             ))
     results_out.sort(key=lambda x: x.position)
 
+    ai_analysis_out = QualitativeAnalysisOut(**call.ai_analysis) if call.ai_analysis else None
+
     return CallDetailOut(
         id=call.id,
         project_id=call.project_id,
@@ -327,6 +345,7 @@ async def get_call(
         created_at=call.created_at,
         transcription=transcription_out,
         analysis_results=results_out,
+        ai_analysis=ai_analysis_out,
     )
 
 
@@ -356,10 +375,14 @@ async def reprocess_call(
     _: Annotated[TokenData, Depends(require_admin)],
 ) -> dict:
     """
-    Reset a failed/stuck call back to UPLOADED and re-enqueue.
-    Useful for retrying after fixing an error or refilling OpenAI quota.
+    Reset a failed/stuck call to the earliest pipeline stage whose result is
+    missing, and re-enqueue. Useful for retrying after fixing an error or
+    refilling OpenAI quota. Completed stages are not repeated: an existing
+    transcription skips Whisper, an existing converted file skips FFmpeg.
     """
-    result = await db.execute(select(Call).where(Call.id == call_id))
+    result = await db.execute(
+        select(Call).where(Call.id == call_id).options(selectinload(Call.transcription))
+    )
     call = result.scalar_one_or_none()
     if call is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Call not found")
@@ -370,21 +393,29 @@ async def reprocess_call(
             detail="Call is already done. Cannot reprocess.",
         )
 
-    # Reset to a clean UPLOADED state. We keep original_file_path (the source)
-    # and original_filename, but clear everything derived (WAV path, language,
-    # duration) so the pipeline re-runs from conversion. The advisory lock in
-    # process_call protects against double-processing if the call is still queued.
     if not call.original_file_path:
         # Defensive: refuse to reprocess a row whose source we cannot locate.
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Call has no original_file_path; source recording is unrecoverable.",
         )
-    call.status = CallStatus.UPLOADED
+
+    # The advisory lock in process_call protects against double-processing
+    # if the call is still queued.
+    if call.transcription is not None:
+        # Transcription exists → only the LLM stage needs to run. The pipeline's
+        # TRANSCRIBING branch detects the existing transcription and skips Whisper.
+        call.status = CallStatus.TRANSCRIBING
+    elif call.file_path:
+        # Converted audio exists → skip FFmpeg, redo Whisper (clear its output).
+        call.status = CallStatus.TRANSCRIBING
+        call.language = None
+    else:
+        # Nothing derived yet → full re-run from conversion.
+        call.status = CallStatus.UPLOADED
+        call.language = None
+        call.duration_seconds = None
     call.error_message = None
-    call.file_path = None
-    call.language = None
-    call.duration_seconds = None
     await db.flush()
     await db.commit()  # worker must see committed status before dequeuing
 
@@ -394,4 +425,4 @@ async def reprocess_call(
             detail="Task queue is full, try again later",
         )
 
-    return {"call_id": call_id, "status": CallStatus.UPLOADED}
+    return {"call_id": call_id, "status": call.status}

@@ -2,8 +2,8 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   getManagers, getProjects, getCalls,
-  getManagerOverview, getManagerMetrics, getManagerTimeline,
-  Manager, Project, CallListItem, ManagerOverview, MetricSummary, CallsTimelinePoint,
+  getManagerOverview, getManagerMetrics, getManagerTimeline, getManagerQualitative,
+  Manager, Project, CallListItem, ManagerOverview, MetricSummary, CallsTimelinePoint, QualitativeCallSummary,
 } from '../api'
 import { IconPhoneWave, IconClock, IconTarget, IconTrend } from '../components/icons'
 import Avatar from '../components/Avatar'
@@ -16,6 +16,17 @@ const PERIODS = [
   { key: 'month', label: 'Месяц', days: 30 },
 ] as const
 type PeriodKey = typeof PERIODS[number]['key']
+
+// Separate from PERIODS above (which drives the tiles/activity strip and
+// requires a concrete day count) — this filter only scopes the qualitative
+// AI-analysis feed below and supports an "all time" option.
+const QUAL_PERIODS = [
+  { key: 'day', label: 'День' },
+  { key: 'week', label: 'Неделя' },
+  { key: 'month', label: 'Месяц' },
+  { key: 'all', label: 'Всё время' },
+] as const
+type QualPeriodKey = typeof QUAL_PERIODS[number]['key']
 
 const STATUS_LABELS: Record<string, string> = {
   uploaded: 'Загружен', converting: 'Конвертация', transcribing: 'Транскрипция',
@@ -101,6 +112,10 @@ export default function ManagerDetailPage() {
   const [metrics, setMetrics] = useState<MetricSummary[]>([])
   const [timeline, setTimeline] = useState<CallsTimelinePoint[]>([])
   const [calls, setCalls] = useState<CallListItem[]>([])
+
+  const [qualPeriod, setQualPeriod] = useState<QualPeriodKey>('week')
+  const [qualitative, setQualitative] = useState<QualitativeCallSummary[]>([])
+  const [qualLoading, setQualLoading] = useState(true)
   const [loading, setLoading] = useState(true)
   const [managerError, setManagerError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -155,6 +170,17 @@ export default function ManagerDetailPage() {
   }, [userId, tab, dateFrom])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    setQualLoading(true)
+    const projectId = tab === 'all' ? undefined : tab
+    const qualDays: Record<Exclude<QualPeriodKey, 'all'>, number> = { day: 1, week: 7, month: 30 }
+    const dateFrom = qualPeriod === 'all' ? undefined : isoDaysAgo(qualDays[qualPeriod] - 1)
+    getManagerQualitative(userId, { projectId, dateFrom })
+      .then(setQualitative)
+      .catch(() => setQualitative([]))
+      .finally(() => setQualLoading(false))
+  }, [userId, tab, qualPeriod])
 
   const activeDatesSet = useMemo(() => new Set(timeline.map(t => t.date)), [timeline])
 
@@ -283,6 +309,56 @@ export default function ManagerDetailPage() {
                 />
               ))}
             </div>
+          </div>
+
+          <div className={styles.section}>
+            <div className={styles.qualHead}>
+              <div>
+                <h2 className={styles.sectionTitle}>Разбор AI по звонкам</h2>
+                <p className={styles.sectionSubtitle}>
+                  Боли клиента, как менеджер их отработал, и слабые места — что усилить
+                </p>
+              </div>
+              <div className={styles.periodToggle}>
+                {QUAL_PERIODS.map(p => (
+                  <button
+                    key={p.key}
+                    className={qualPeriod === p.key ? styles.periodBtnActive : styles.periodBtn}
+                    onClick={() => setQualPeriod(p.key)}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {qualLoading ? (
+              <div className={styles.empty}>Загрузка…</div>
+            ) : qualitative.length === 0 ? (
+              <div className={styles.empty}>Нет разобранных звонков за этот период</div>
+            ) : (
+              <div className={styles.qualList}>
+                {qualitative.map(q => (
+                  <Link to={`/calls/${q.call_id}`} key={q.call_id} className={styles.qualCard}>
+                    <div className={styles.qualCardDate}>
+                      {new Date(q.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                    {q.summary && <p className={styles.qualSummary}>{q.summary}</p>}
+                    {q.pains_found.length > 0 && (
+                      <div className={styles.qualRow}>
+                        <span className={styles.qualLabel}>Боли:</span>
+                        <span className={styles.qualValue}>{q.pains_found.join(', ')}</span>
+                      </div>
+                    )}
+                    {q.weak_spots.length > 0 && (
+                      <div className={styles.qualRow}>
+                        <span className={styles.qualLabelWeak}>Усилить:</span>
+                        <span className={styles.qualValueWeak}>{q.weak_spots.join(' · ')}</span>
+                      </div>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className={styles.grid}>

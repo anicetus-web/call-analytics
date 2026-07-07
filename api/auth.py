@@ -7,7 +7,7 @@ The token is verified on every protected endpoint via Depends(require_admin).
 Token payload: {"sub": str(user_id), "role": "admin"}
 
 Only ADMIN-role users can obtain tokens.
-Token expiry: settings.JWT_EXPIRE_MINUTES (default 7 days).
+Token expiry: settings.JWT_EXPIRE_MINUTES (default 1 day).
 
 Login brute-force protection:
   - In-memory sliding window limits failed attempts per login to 5 within 15 minutes.
@@ -44,6 +44,10 @@ ALGORITHM = "HS256"
 _MAX_FAILED_ATTEMPTS = 5
 _WINDOW_SECONDS = 15 * 60  # 15 minutes
 _failed_attempts: dict[str, collections.deque] = {}
+# Keys are attacker-controlled login strings; without a sweep the dict would grow
+# without bound under a probe of random logins (memory DoS). Sweep expired keys
+# whenever the dict gets large.
+_SWEEP_THRESHOLD = 10_000
 
 
 def _check_rate_limit(login: str) -> None:
@@ -55,6 +59,9 @@ def _check_rate_limit(login: str) -> None:
     # Discard expired entries
     while dq and dq[0] < now - _WINDOW_SECONDS:
         dq.popleft()
+    if not dq:
+        _failed_attempts.pop(login, None)
+        return
     if len(dq) >= _MAX_FAILED_ATTEMPTS:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -63,8 +70,13 @@ def _check_rate_limit(login: str) -> None:
 
 
 def _record_failure(login: str) -> None:
+    now = time.monotonic()
+    if len(_failed_attempts) >= _SWEEP_THRESHOLD:
+        cutoff = now - _WINDOW_SECONDS
+        for key in [k for k, v in _failed_attempts.items() if not v or v[-1] < cutoff]:
+            _failed_attempts.pop(key, None)
     dq = _failed_attempts.setdefault(login, collections.deque())
-    dq.append(time.monotonic())
+    dq.append(now)
 
 
 def _clear_failures(login: str) -> None:

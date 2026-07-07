@@ -117,6 +117,53 @@
   gap: 10px;
 }
 
+.aiSummary {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg-hover);
+  border-left: 3px solid var(--accent-pink);
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+}
+
+.aiBlock {
+  margin-bottom: 14px;
+}
+.aiBlock:last-child { margin-bottom: 0; }
+
+.aiBlockTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+}
+
+.aiText {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.aiList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.aiListWeak {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  color: #fca5a5;
+  line-height: 1.6;
+}
+
 .resultRow {
   display: flex;
   align-items: center;

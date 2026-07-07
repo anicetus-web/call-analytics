@@ -217,8 +217,12 @@ async def _upload_file(
     file_path = file.file_path
     download_url = f"https://api.telegram.org/file/bot{settings.TELEGRAM_BOT_TOKEN}/{file_path}"
 
+    # The filename comes from the Telegram sender — strip any path components
+    # ("../../x", "..\\x") so a crafted name can't write outside TEMP_DIR.
+    safe_filename = os.path.basename(original_filename.replace("\\", "/")) or "file"
+
     # Write to a temp file instead of buffering in memory — avoids holding 200 MB as bytes.
-    tmp_path = os.path.join(settings.TEMP_DIR, f"bot_{uuid.uuid4().hex}_{original_filename}")
+    tmp_path = os.path.join(settings.TEMP_DIR, f"bot_{uuid.uuid4().hex}_{safe_filename}")
     os.makedirs(settings.TEMP_DIR, exist_ok=True)
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
@@ -237,7 +241,7 @@ async def _upload_file(
                     f"{_API_BASE}/api/calls/upload",
                     headers=_BOT_HEADERS,
                     data=form_data,
-                    files={"file": (original_filename, f)},
+                    files={"file": (safe_filename, f)},
                 )
 
         if api_response.status_code == 201:
@@ -310,6 +314,10 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     telegram_id = message.from_user.id if message.from_user else None
     if telegram_id is None:
         return
+
+    # /start may arrive mid-upload (e.g. while waiting_comment) — drop the
+    # in-progress upload so the manager doesn't stay stuck in that state.
+    await _reset_upload_state(state)
 
     projects = await _fetch_manager_projects(telegram_id)
     if projects is None:

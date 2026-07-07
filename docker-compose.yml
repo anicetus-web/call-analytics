@@ -52,8 +52,12 @@ services:
     # Override the image entrypoint: API no longer runs migrations itself; the
     # dedicated `migrate` service does that exactly once.
     command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    # Bound to loopback only: the browser reaches the API through the frontend
+    # nginx proxy (same origin), and bot/worker use the compose network
+    # ("http://api:8000"). Publishing 0.0.0.0:8000 on a public VPS would expose
+    # the API (incl. /api/auth/token brute-force surface) directly.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
       interval: 10s

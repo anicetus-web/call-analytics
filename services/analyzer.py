@@ -15,6 +15,7 @@ Raises AnalysisError if all retries fail for a given group (other groups continu
 """
 
 import asyncio
+import json
 import logging
 import re
 from dataclasses import dataclass, field
@@ -175,6 +176,69 @@ async def _call_llm(prompt: str) -> str:
     raise AnalysisError(
         f"LLM failed after {settings.MAX_RETRY_ATTEMPTS} attempts: {last_exc}"
     )
+
+
+_QUALITATIVE_SYSTEM_PROMPT = (
+    "Ты — экспертный аналитик продающих звонков. Отвечай ТОЛЬКО валидным JSON "
+    "без markdown-разметки, строго по схеме:\n"
+    '{"pains_found": ["боль1", "боль2"], '
+    '"pains_addressed": "коротко: достал ли менеджер боли клиента и как их отработал", '
+    '"weak_spots": ["слабое место 1, что усилить", "слабое место 2"], '
+    '"summary": "1-2 живых предложения с общей оценкой звонка — как реальный человек говорит коллеге, с плюсами и минусами"}\n'
+    "pains_found — конкретные боли клиента ИЗ ЭТОГО разговора (не из базы знаний огулом). "
+    "weak_spots — 2-4 пункта, каждый привязан к конкретному критерию из списка ниже "
+    "(«критерии оценки»), который менеджер выполнил слабо или не выполнил — назови критерий "
+    "и что именно сделать иначе. Не придумывай критерии вне списка. "
+    "Пиши по-русски, кратко, без канцелярита."
+)
+
+
+async def analyze_call_qualitative(
+    transcription: str,
+    product_context: str,
+) -> dict | None:
+    """
+    Separate from the 0/0.5/1 per-criterion scoring: a free-text qualitative
+    read of the call — which client pains came up, whether/how the manager
+    addressed them, concrete weak spots to strengthen (grounded in the same
+    criteria shown on the dashboard), and a short human summary. Returns None
+    (not raised) on failure — this is supplementary, a failure here must not
+    block the per-criterion scoring pipeline.
+    """
+    prompt = (
+        f"Критерии оценки (те же, что видны на дашборде):\n{product_context}\n\n"
+        f"Транскрибация звонка:\n{transcription}\n\n"
+        "Проанализируй этот звонок по схеме из системного промпта."
+    )
+    try:
+        response = await _client.chat.completions.create(
+            model=settings.LLM_MODEL,
+            messages=[
+                {"role": "system", "content": _QUALITATIVE_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=settings.LLM_TEMPERATURE,
+            max_tokens=settings.LLM_MAX_TOKENS,
+            response_format={"type": "json_object"},
+        )
+        raw = (response.choices[0].message.content or "").strip()
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            return None
+        return {
+            "pains_found": data.get("pains_found") or [],
+            "pains_addressed": data.get("pains_addressed") or "",
+            "weak_spots": data.get("weak_spots") or [],
+            "summary": data.get("summary") or "",
+        }
+    except RateLimitError as exc:
+        if getattr(exc, "code", None) == "insufficient_quota":
+            raise QuotaExhaustedError("OpenAI quota exhausted") from exc
+        logger.warning("Qualitative analysis rate-limited (non-fatal): %s", exc)
+        return None
+    except Exception as exc:
+        logger.warning("Qualitative analysis failed (non-fatal): %s", exc)
+        return None
 
 
 async def analyze_call(

@@ -132,6 +132,12 @@ def create_app() -> FastAPI:
         app.include_router(metrics_router)
         app.include_router(calls_router)
         app.include_router(analytics_router)
+
+    # /internal/enqueue is deliberately NOT mounted here: it feeds this process's
+    # in-memory queue, which only a RUN_WORKER process drains. Mounting it in an
+    # API-only process would accept calls into a queue nothing ever reads
+    # (worker_main.py mounts it in the worker, where it belongs).
+    if settings.RUN_WORKER:
         from api.routes.internal import internal_router
         app.include_router(internal_router)
 

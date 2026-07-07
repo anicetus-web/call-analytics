@@ -28,9 +28,9 @@ from database import (
     MetricGroup, AsyncSessionLocal,
 )
 from database.connection import engine
-from services.file_converter import convert_to_wav, ConversionError
+from services.file_converter import convert_for_whisper, ConversionError
 from services.transcription import transcribe, TranscriptionError
-from services.analyzer import analyze_call, QuotaExhaustedError, AnalysisError
+from services.analyzer import analyze_call, analyze_call_qualitative, QuotaExhaustedError, AnalysisError
 from services import storage
 
 logger = logging.getLogger(__name__)
@@ -167,7 +167,7 @@ async def _run_pipeline(session: AsyncSession, call: Call) -> None:
     os.makedirs(settings.TEMP_DIR, exist_ok=True)
     # Unique per-run suffix so concurrent or retried runs never collide on temp paths.
     run_tag = uuid.uuid4().hex
-    local_wav: str | None = None
+    local_audio: str | None = None
 
     try:
         # ── Stage 1: Convert ────────────────────────────────────────────────
@@ -178,7 +178,7 @@ async def _run_pipeline(session: AsyncSession, call: Call) -> None:
             await _set_status(session, call, CallStatus.CONVERTING)
             await session.commit()
 
-            # Always read from the immutable original key; the WAV is written separately.
+            # Always read from the immutable original key; the converted file is written separately.
             original_key = call.original_file_path
             if not original_key:
                 raise ConversionError("Call has no original_file_path — cannot process")
@@ -186,9 +186,9 @@ async def _run_pipeline(session: AsyncSession, call: Call) -> None:
             local_original = os.path.join(settings.TEMP_DIR, f"call_{call.id}_{run_tag}_orig")
             await storage.download_file(original_key, local_original)
 
-            local_wav = os.path.join(settings.TEMP_DIR, f"call_{call.id}_{run_tag}.wav")
+            local_audio = os.path.join(settings.TEMP_DIR, f"call_{call.id}_{run_tag}.ogg")
             try:
-                conv = await convert_to_wav(local_original, local_wav)
+                conv = await convert_for_whisper(local_original, local_audio)
             finally:
                 if os.path.exists(local_original):
                     os.remove(local_original)
@@ -196,22 +196,25 @@ async def _run_pipeline(session: AsyncSession, call: Call) -> None:
             # Clamp to SmallInteger max (32767 s ≈ 9.1 h) to avoid DB overflow
             call.duration_seconds = min(conv.duration_seconds, 32767)
 
-            wav_key = storage.build_key(call.id, "audio.wav")
-            await storage.upload_file(local_wav, wav_key)
-            call.file_path = wav_key
+            audio_key = storage.build_key(call.id, "audio.ogg")
+            await storage.upload_file(local_audio, audio_key)
+            call.file_path = audio_key
 
             await _set_status(session, call, CallStatus.TRANSCRIBING)
             await session.commit()
 
         # ── Stage 2: Transcribe ──────────────────────────────────────────────
         if call.status == CallStatus.TRANSCRIBING and call.transcription is None:
-            local_wav = local_wav or os.path.join(settings.TEMP_DIR, f"call_{call.id}_{run_tag}.wav")
-            if not os.path.exists(local_wav):
+            if local_audio is None or not os.path.exists(local_audio):
                 if not call.file_path:
-                    raise TranscriptionError("Call has no converted WAV (file_path is empty)")
-                await storage.download_file(call.file_path, local_wav)
+                    raise TranscriptionError("Call has no converted audio (file_path is empty)")
+                # Preserve the key's extension (legacy rows have audio.wav, new ones
+                # audio.ogg) — the OpenAI SDK infers the format from the filename.
+                ext = os.path.splitext(call.file_path)[1] or ".ogg"
+                local_audio = os.path.join(settings.TEMP_DIR, f"call_{call.id}_{run_tag}{ext}")
+                await storage.download_file(call.file_path, local_audio)
 
-            result = await transcribe(local_wav)
+            result = await transcribe(local_audio)
 
             if len(result.full_text.strip()) < settings.MIN_TRANSCRIPTION_LENGTH:
                 raise TranscriptionError(
@@ -229,10 +232,10 @@ async def _run_pipeline(session: AsyncSession, call: Call) -> None:
             await _set_status(session, call, CallStatus.ANALYZING)
             await session.commit()
 
-            # WAV no longer needed locally after successful transcription
-            if local_wav and os.path.exists(local_wav):
-                os.remove(local_wav)
-                local_wav = None
+            # Converted audio no longer needed locally after successful transcription
+            if local_audio and os.path.exists(local_audio):
+                os.remove(local_audio)
+                local_audio = None
 
         elif call.status == CallStatus.TRANSCRIBING and call.transcription is not None:
             # Transcription already exists (retry after LLM failure) — skip Whisper
@@ -303,12 +306,29 @@ async def _run_pipeline(session: AsyncSession, call: Call) -> None:
                 if has_partial_error:
                     logger.warning("Call %d: some metric groups failed, marked done anyway", call.id)
 
+                # Qualitative read (pains surfaced, how they were handled, weak
+                # spots, a short human summary) — separate from per-criterion
+                # scores above. Grounded in the SAME criteria shown on the
+                # dashboard (not the raw prompt_template, which still has its
+                # unsubstituted {items}/{transcription} placeholders). A
+                # failure here must not fail the call — the per-criterion
+                # scores above are the load-bearing result.
+                context_parts = []
+                for g in metric_groups:
+                    active = [item.name for item in g.items if item.is_active]
+                    if active:
+                        context_parts.append(f"{g.name}:\n" + "\n".join(f"- {n}" for n in active))
+                product_context = "\n\n".join(context_parts)[:6000]
+                call.ai_analysis = await analyze_call_qualitative(
+                    call.transcription.full_text, product_context,
+                )
+
             await _set_status(session, call, CallStatus.DONE)
 
     finally:
-        # Always clean up local WAV regardless of success or exception.
-        if local_wav and os.path.exists(local_wav):
-            os.remove(local_wav)
+        # Always clean up local converted audio regardless of success or exception.
+        if local_audio and os.path.exists(local_audio):
+            os.remove(local_audio)
 
 
 def _success_summary(call: Call) -> str:
