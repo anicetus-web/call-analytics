@@ -154,21 +154,6 @@ export default function CallDetailPage() {
         </div>
       )}
 
-      {audioUrl && (
-        <div className={styles.section}>
-          <div className={styles.audioHead}>
-            <h2 className={styles.sectionTitle}>Запись</h2>
-            <a href={audioUrl} target="_blank" rel="noopener noreferrer" className={styles.cloudLink}>
-              Открыть в облаке ↗
-            </a>
-          </div>
-          <audio ref={audioRef} controls src={audioUrl} className={styles.audio} />
-          <p className={styles.audioHint}>
-            Ссылка на файл в облачном хранилище действует ограниченное время — открывайте со страницы звонка.
-          </p>
-        </div>
-      )}
-
       {call.ai_analysis && (
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Разбор AI</h2>
@@ -251,6 +236,21 @@ export default function CallDetailPage() {
           ) : (
             <pre className={styles.transcript}>{call.transcription.full_text}</pre>
           )}
+        </div>
+      )}
+
+      {audioUrl && (
+        <div className={styles.section}>
+          <div className={styles.audioHead}>
+            <h2 className={styles.sectionTitle}>Запись</h2>
+            <a href={audioUrl} target="_blank" rel="noopener noreferrer" className={styles.cloudLink}>
+              Открыть в облаке ↗
+            </a>
+          </div>
+          <audio ref={audioRef} controls src={audioUrl} className={styles.audio} />
+          <p className={styles.audioHint}>
+            Ссылка на файл в облачном хранилище действует ограниченное время — открывайте со страницы звонка.
+          </p>
         </div>
       )}
 
