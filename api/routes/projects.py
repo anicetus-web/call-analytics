@@ -32,6 +32,7 @@ from api.auth import require_admin, TokenData
 from database import (
     Project, ProjectMember, User, UserRole, Call, CallStatus, get_db
 )
+from services.default_metrics import ensure_default_metric_group
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -138,6 +139,11 @@ async def create_project(
         created_by=current.user_id,
     )
     db.add(project)
+    await db.flush()
+    # Every project gets the universal 8-stage sales-meeting metric group
+    # automatically — it's not tied to any one project's niche, unlike the
+    # niche-specific groups (e.g. the tutoring script) that get seeded manually.
+    await ensure_default_metric_group(db, project.id)
     await db.flush()
     await db.refresh(project)
     return ProjectOut(
