@@ -8,7 +8,8 @@ import Avatar from '../components/Avatar'
 import { IconSearch } from '../components/icons'
 import styles from './ErrorsPage.module.css'
 
-type Period = 'today' | 'yesterday' | '7d' | '30d' | 'custom'
+export type Period = 'today' | 'yesterday' | '7d' | '30d' | 'custom'
+const PERIOD_KEYS: Period[] = ['today', 'yesterday', '7d', '30d', 'custom']
 
 function periodRange(period: Period, customFrom: string, customTo: string): { dateFrom?: string; dateTo?: string } {
   const fmt = (d: Date) => d.toISOString().slice(0, 10)
@@ -192,12 +193,12 @@ export function TopErrorsTab({ dateFrom, dateTo, projectId, userId, limit = 5 }:
 
 // ── Tab 2: Ошибки менеджеров ────────────────────────────────────────────────
 
-export function ManagerErrorsTab({ dateFrom, dateTo, projectId, compact = false }: {
-  dateFrom?: string; dateTo?: string; projectId?: number; compact?: boolean
+export function ManagerErrorsTab({ dateFrom, dateTo, projectId, compact = false, initialManagerId }: {
+  dateFrom?: string; dateTo?: string; projectId?: number; compact?: boolean; initialManagerId?: number
 }) {
   const [managers, setManagers] = useState<Manager[]>([])
   const [search, setSearch] = useState('')
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedId, setSelectedId] = useState<number | null>(initialManagerId ?? null)
   const [summary, setSummary] = useState<ManagerErrorSummary | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [errorsExpanded, setErrorsExpanded] = useState(false)
@@ -339,9 +340,13 @@ export default function ErrorsPage() {
   const [searchParams] = useSearchParams()
   const initialTab = searchParams.get('tab') === 'managers' ? 'managers' : 'top'
   const [tab, setTab] = useState<'top' | 'managers'>(initialTab)
-  const [period, setPeriod] = useState<Period>('7d')
+  const periodParam = searchParams.get('period')
+  const initialPeriod: Period = periodParam && (PERIOD_KEYS as string[]).includes(periodParam) ? periodParam as Period : '7d'
+  const [period, setPeriod] = useState<Period>(initialPeriod)
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
+  const managerIdParam = searchParams.get('manager_id')
+  const initialManagerId = managerIdParam ? Number(managerIdParam) : undefined
 
   const { dateFrom, dateTo } = periodRange(period, customFrom, customTo)
 
@@ -383,7 +388,7 @@ export default function ErrorsPage() {
         </button>
       </div>
 
-      {tab === 'top' ? <TopErrorsTab dateFrom={dateFrom} dateTo={dateTo} /> : <ManagerErrorsTab dateFrom={dateFrom} dateTo={dateTo} />}
+      {tab === 'top' ? <TopErrorsTab dateFrom={dateFrom} dateTo={dateTo} /> : <ManagerErrorsTab dateFrom={dateFrom} dateTo={dateTo} initialManagerId={initialManagerId} />}
     </div>
   )
 }

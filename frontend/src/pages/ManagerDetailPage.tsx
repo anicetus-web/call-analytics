@@ -8,7 +8,7 @@ import {
 import { IconPhoneWave, IconClock, IconTarget, IconTrend } from '../components/icons'
 import Avatar from '../components/Avatar'
 import SessionStatus from '../components/SessionStatus'
-import { TopErrorsTab } from './ErrorsPage'
+import { TopErrorsTab, Period } from './ErrorsPage'
 import styles from './ManagerDetailPage.module.css'
 
 const QUAL_PREVIEW_COUNT = 2
@@ -33,6 +33,11 @@ const PERIODS = [
   { key: 'month', label: 'Месяц', days: 30 },
 ] as const
 type PeriodKey = typeof PERIODS[number]['key']
+
+// Maps this page's own period selector (day/week/month) to the equivalent
+// preset on the "Ошибки" page, so the "Перейти к ошибкам" button lands
+// there already scoped to the same window instead of resetting to default.
+const PERIOD_TO_ERRORS: Record<PeriodKey, Period> = { day: 'today', week: '7d', month: '30d' }
 
 // Separate from PERIODS above (which drives the tiles/activity strip and
 // requires a concrete day count) — this filter only scopes the qualitative
@@ -433,6 +438,12 @@ export default function ManagerDetailPage() {
                 <p className={styles.sectionSubtitle}>Что этому менеджеру стоит улучшить в первую очередь</p>
               </div>
               <TopErrorsTab dateFrom={dateFrom} projectId={tab as number} userId={userId} limit={5} />
+              <Link
+                to={`/analytics/errors?tab=managers&manager_id=${userId}&period=${PERIOD_TO_ERRORS[period]}`}
+                className={styles.showAllLink}
+              >
+                Перейти к ошибкам менеджера →
+              </Link>
             </div>
           )}
 
