@@ -338,7 +338,7 @@ export default function AnalyticsPage() {
                 Топ ошибок
               </h2>
               <TopErrorsTab dateFrom={dateFrom || undefined} dateTo={dateTo || undefined} projectId={projectId ? Number(projectId) : undefined} userId={managerId ? Number(managerId) : undefined} />
-              <Link to="/analytics/errors?tab=managers" className={styles.jumpToManagersBtn}>Перейти к ошибкам менеджеров →</Link>
+              <Link to="/analytics/errors?tab=top" className={styles.jumpToManagersBtn}>Перейти к топ ошибкам →</Link>
             </div>
 
             <div className={`${styles.section} ${styles.sectionAccentBlue}`} ref={errorsRef}>
@@ -347,6 +347,7 @@ export default function AnalyticsPage() {
                 Ошибки менеджеров
               </h2>
               <ManagerErrorsTab dateFrom={dateFrom || undefined} dateTo={dateTo || undefined} projectId={projectId ? Number(projectId) : undefined} compact />
+              <Link to="/analytics/errors?tab=managers" className={styles.jumpToManagersBtn}>Перейти к ошибкам менеджеров →</Link>
             </div>
 
             {!selectedManager && (

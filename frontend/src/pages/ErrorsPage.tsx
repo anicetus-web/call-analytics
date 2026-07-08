@@ -146,7 +146,7 @@ export function TopErrorsTab({ dateFrom, dateTo, projectId, userId, limit = 5 }:
                 <div className={styles.detailManagers}>
                   <span className={styles.detailLabel}>Кто чаще всего допускает эту ошибку</span>
                   <div className={styles.searchWrap}>
-                    <IconSearch size={14} className={styles.searchIcon} />
+                    <IconSearch size={15} className={styles.searchIcon} />
                     <input
                       type="text"
                       className={styles.searchInput}

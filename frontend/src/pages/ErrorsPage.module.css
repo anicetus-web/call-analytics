@@ -188,30 +188,33 @@
 @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 
 .searchWrap {
-  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
   margin-bottom: 8px;
+  transition: border-color 0.15s;
 }
+.searchWrap:focus-within { border-color: var(--accent-pink); }
 
 .searchIcon {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
   color: var(--text-faint);
-  pointer-events: none;
+  flex-shrink: 0;
 }
 
 .searchInput {
   width: 100%;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 7px 10px 7px 30px;
+  background: none;
+  border: none;
+  outline: none;
+  padding: 0;
   font-size: 12px;
   color: var(--text);
-  transition: border-color 0.15s;
 }
-.searchInput:focus { border-color: var(--accent-pink); }
+.searchInput::placeholder { color: var(--text-faint); }
 
 .managerRankList {
   display: flex;
