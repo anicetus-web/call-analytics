@@ -137,6 +137,23 @@
   grid-column: 1 / -1;
 }
 
+/* Main criteria (left, wider) + forbidden-words group (right, narrower),
+   separated by a transparent gap — same split used on Аналитика/manager pages. */
+.metricSplitWrap {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+.metricSplitLeft, .metricSplitRight {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .metricSplitWrap { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 900px) {
   .analyticsGrid { grid-template-columns: 1fr; }
 }

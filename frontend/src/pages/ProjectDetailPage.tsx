@@ -181,7 +181,7 @@ export default function ProjectDetailPage() {
   const navigate = useNavigate()
 
   const [project, setProject] = useState<Project | null>(null)
-  const [tab, setTab] = useState<Tab>('calls')
+  const [tab, setTab] = useState<Tab>('analytics')
   const [calls, setCalls] = useState<CallListItem[]>([])
   const [hasMore, setHasMore] = useState(false)
   const [offset, setOffset] = useState(0)
@@ -396,118 +396,94 @@ export default function ProjectDetailPage() {
             )}
           </div>
 
-          <div className={`${styles.section} ${styles.sectionWide}`}>
-            <h2 className={styles.sectionTitle}>Разбор AI по звонкам</h2>
-            <p className={styles.sectionDesc}>
-              Боли клиента, как отработал менеджер, слабые места — по каждой группе метрик отдельно
-            </p>
-            {qualLoading ? (
-              <div className={styles.empty}>Загрузка…</div>
-            ) : qualitative.length === 0 ? (
-              <div className={styles.empty}>Нет разобранных звонков за этот период</div>
-            ) : (
-              <div className={styles.qualList}>
-                {qualitative.map(q => (
-                  <div key={`${q.call_id}-${q.metric_group_id}`} className={styles.qualCard}>
-                    <div className={styles.qualCardHead}>
-                      <span className={styles.qualGroupBadge}>{q.metric_group_name}</span>
-                      <Link to={`/managers/${q.manager_id}`} className={styles.qualManager}>
-                        {q.manager_name}
-                      </Link>
-                      <span className={styles.qualCardDate}>
-                        {new Date(q.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <Link to={`/calls/${q.call_id}`} className={styles.qualCallLink}>Звонок →</Link>
-                    </div>
-                    {q.summary && <p className={styles.qualSummary}>{q.summary}</p>}
-                    {q.weak_spots.length > 0 && (
-                      <div className={styles.qualRow}>
-                        <span className={styles.qualLabelWeak}>Усилить:</span>
-                        <span className={styles.qualValueWeak}>{q.weak_spots.join(' · ')}</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           {metrics.length > 0 && (() => {
             const openMetric = expandedMetric !== null
               ? metrics.find(m => m.metric_item_id === expandedMetric) ?? null
               : null
             const openCalls = expandedMetric !== null ? metricCalls[expandedMetric] : undefined
             const blocks = groupMetrics(metrics)
-            // Each metric group is its own equal-height card in the 2-up grid;
-            // a lone group spans full width so it isn't stranded next to a gap.
-            return blocks.map(block => {
+            const rightBlocks = blocks.filter(b => b.type === 'forbidden_keywords')
+            const leftBlocks = blocks.filter(b => b.type !== 'forbidden_keywords')
+
+            const renderGroupCard = (block: MetricGroupBlock) => {
               const groupAvg = block.items.reduce((s, i) => s + i.avg_score, 0) / block.items.length
               const groupPct = Math.round(groupAvg * 100)
               return (
-                    <div
-                      key={block.id}
-                      className={blocks.length === 1 ? `${styles.section} ${styles.sectionWide}` : styles.section}
-                    >
-                      <div className={styles.metricGroupHead}>
-                        <div>
-                          <span className={styles.metricGroupName}>{block.name}</span>
-                          <span className={styles.metricGroupHint}>{GROUP_TYPE_HINT[block.type]}</span>
-                        </div>
-                        <span className={styles.metricGroupScore} style={{ color: scoreTierColor(groupAvg) }}>
-                          {groupPct}%
-                        </span>
-                      </div>
-                      <div className={styles.metricGrid}>
-                        {block.items.map(m => {
-                          const isOpen = expandedMetric === m.metric_item_id
-                          const pct = Math.round(m.avg_score * 100)
-                          return (
-                            <button
-                              key={m.metric_item_id}
-                              type="button"
-                              className={`${styles.metricCard} ${isOpen ? styles.metricCardActive : ''}`}
-                              onClick={() => toggleMetric(m.metric_item_id)}
-                              aria-expanded={isOpen}
-                            >
-                              <div className={styles.scoreRingWrap}>
-                                <div
-                                  className={styles.scoreRing}
-                                  style={{ background: `conic-gradient(${scoreTierColor(m.avg_score)} ${pct * 3.6}deg, var(--bg-hover) 0deg)` }}
-                                />
-                                <span className={styles.scoreRingValue}>{pct}%</span>
-                              </div>
-                              <span className={styles.metricCardName}>{m.name}</span>
-                              <span className={styles.callCnt}>{m.call_count} зв.</span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                      {openMetric && openMetric.metric_group_id === block.id && (
-                        <div className={styles.drillPanel}>
-                          <div className={styles.drillPanelTitle}>
-                            Звонки, где не выполнен критерий «{openMetric.name}»
-                          </div>
-                          <div className={styles.metricCalls}>
-                            {openCalls === 'loading' || openCalls === undefined ? (
-                              <DrillDownSkeleton />
-                            ) : openCalls === 'error' ? (
-                              <div className={styles.metricCallsState}>Не удалось загрузить звонки</div>
-                            ) : openCalls.length === 0 ? (
-                              <div className={styles.metricCallsState}>Провалов по этому критерию не найдено</div>
-                            ) : (
-                              <>
-                                {openCalls.map(c => <DrillDownCallRow key={c.call_id} call={c} />)}
-                                {openCalls.length >= 4 && (
-                                  <div className={styles.metricCallsState}>Показаны последние {openCalls.length}</div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                <div key={block.id} className={styles.section}>
+                  <div className={styles.metricGroupHead}>
+                    <div>
+                      <span className={styles.metricGroupName}>{block.name}</span>
+                      <span className={styles.metricGroupHint}>{GROUP_TYPE_HINT[block.type]}</span>
                     </div>
+                    <span className={styles.metricGroupScore} style={{ color: scoreTierColor(groupAvg) }}>
+                      {groupPct}%
+                    </span>
+                  </div>
+                  <div className={styles.metricGrid}>
+                    {block.items.map(m => {
+                      const isOpen = expandedMetric === m.metric_item_id
+                      const pct = Math.round(m.avg_score * 100)
+                      return (
+                        <button
+                          key={m.metric_item_id}
+                          type="button"
+                          className={`${styles.metricCard} ${isOpen ? styles.metricCardActive : ''}`}
+                          onClick={() => toggleMetric(m.metric_item_id)}
+                          aria-expanded={isOpen}
+                        >
+                          <div className={styles.scoreRingWrap}>
+                            <div
+                              className={styles.scoreRing}
+                              style={{ background: `conic-gradient(${scoreTierColor(m.avg_score)} ${pct * 3.6}deg, var(--bg-hover) 0deg)` }}
+                            />
+                            <span className={styles.scoreRingValue}>{pct}%</span>
+                          </div>
+                          <span className={styles.metricCardName}>{m.name}</span>
+                          <span className={styles.callCnt}>{m.call_count} зв.</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {openMetric && openMetric.metric_group_id === block.id && (
+                    <div className={styles.drillPanel}>
+                      <div className={styles.drillPanelTitle}>
+                        Звонки, где не выполнен критерий «{openMetric.name}»
+                      </div>
+                      <div className={styles.metricCalls}>
+                        {openCalls === 'loading' || openCalls === undefined ? (
+                          <DrillDownSkeleton />
+                        ) : openCalls === 'error' ? (
+                          <div className={styles.metricCallsState}>Не удалось загрузить звонки</div>
+                        ) : openCalls.length === 0 ? (
+                          <div className={styles.metricCallsState}>Провалов по этому критерию не найдено</div>
+                        ) : (
+                          <>
+                            {openCalls.map(c => <DrillDownCallRow key={c.call_id} call={c} />)}
+                            {openCalls.length >= 4 && (
+                              <div className={styles.metricCallsState}>Показаны последние {openCalls.length}</div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )
-            })
+            }
+
+            // Forbidden-words group (if this project has one) goes in a narrower
+            // right column next to the main criteria — same split used on the
+            // Аналитика and manager pages. Projects without one just get the
+            // regular 2-up grid, unaffected.
+            if (rightBlocks.length === 0) {
+              return blocks.map(block => renderGroupCard(block))
+            }
+            return (
+              <div className={`${styles.metricSplitWrap} ${styles.sectionWide}`}>
+                <div className={styles.metricSplitLeft}>{leftBlocks.map(renderGroupCard)}</div>
+                <div className={styles.metricSplitRight}>{rightBlocks.map(renderGroupCard)}</div>
+              </div>
+            )
           })()}
 
           {managers.length > 0 && (
@@ -540,6 +516,45 @@ export default function ProjectDetailPage() {
           {metrics.length === 0 && managers.length === 0 && (
             <div className={styles.empty}>Нет данных по критериям и менеджерам за всё время</div>
           )}
+
+          <div className={`${styles.section} ${styles.sectionWide}`}>
+            <h2 className={styles.sectionTitle}>Разбор AI по звонкам</h2>
+            <p className={styles.sectionDesc}>
+              Боли клиента, как отработал менеджер, слабые места — по каждой группе метрик отдельно
+            </p>
+            {qualLoading ? (
+              <div className={styles.empty}>Загрузка…</div>
+            ) : qualitative.length === 0 ? (
+              <div className={styles.empty}>Нет разобранных звонков за этот период</div>
+            ) : (
+              <div className={styles.qualList}>
+                {qualitative.slice(0, 2).map(q => (
+                  <div key={`${q.call_id}-${q.metric_group_id}`} className={styles.qualCard}>
+                    <div className={styles.qualCardHead}>
+                      <span className={styles.qualGroupBadge}>{q.metric_group_name}</span>
+                      <Link to={`/managers/${q.manager_id}`} className={styles.qualManager}>
+                        {q.manager_name}
+                      </Link>
+                      <span className={styles.qualCardDate}>
+                        {new Date(q.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <Link to={`/calls/${q.call_id}`} className={styles.qualCallLink}>Звонок →</Link>
+                    </div>
+                    {q.summary && <p className={styles.qualSummary}>{q.summary}</p>}
+                    {q.weak_spots.length > 0 && (
+                      <div className={styles.qualRow}>
+                        <span className={styles.qualLabelWeak}>Усилить:</span>
+                        <span className={styles.qualValueWeak}>{q.weak_spots.join(' · ')}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <Link to={`/calls?project_id=${projectId}`} className={styles.viewAllLink}>
+              Перейти к звонкам проекта →
+            </Link>
+          </div>
         </div>
       )}
 
