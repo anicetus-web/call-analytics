@@ -99,6 +99,18 @@
   margin-bottom: 20px;
 }
 
+.mediaSplit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+  margin-bottom: 20px;
+}
+.mediaSplit .section { margin-bottom: 0; }
+@media (max-width: 900px) {
+  .mediaSplit { grid-template-columns: 1fr; }
+}
+
 .sectionTitle {
   font-size: 15px;
   font-weight: 600;

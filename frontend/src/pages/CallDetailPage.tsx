@@ -223,40 +223,44 @@ export default function CallDetailPage() {
         </div>
       )}
 
-      {call.transcription && (
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>Транскрипция</h2>
-          {call.transcription.segments.length > 0 ? (
-            <div className={styles.transcriptSegments}>
-              {call.transcription.segments.map((seg, i) => (
-                <div
-                  key={i}
-                  className={audioUrl ? `${styles.segmentRow} ${styles.segmentRowClickable}` : styles.segmentRow}
-                  onClick={audioUrl ? () => seekTo(seg.start) : undefined}
-                >
-                  <span className={styles.segmentTime}>{fmtSeconds(seg.start)}</span>
-                  <span className={styles.segmentText}>{seg.text}</span>
-                </div>
-              ))}
+      {(audioUrl || call.transcription) && (
+        <div className={styles.mediaSplit}>
+          {audioUrl && (
+            <div className={styles.section}>
+              <div className={styles.audioHead}>
+                <h2 className={styles.sectionTitle}>Запись</h2>
+                <a href={audioUrl} target="_blank" rel="noopener noreferrer" className={styles.cloudLink}>
+                  Открыть в облаке ↗
+                </a>
+              </div>
+              <audio ref={audioRef} controls src={audioUrl} className={styles.audio} />
+              <p className={styles.audioHint}>
+                Ссылка на файл в облачном хранилище действует ограниченное время — открывайте со страницы звонка.
+              </p>
             </div>
-          ) : (
-            <pre className={styles.transcript}>{call.transcription.full_text}</pre>
           )}
-        </div>
-      )}
 
-      {audioUrl && (
-        <div className={styles.section}>
-          <div className={styles.audioHead}>
-            <h2 className={styles.sectionTitle}>Запись</h2>
-            <a href={audioUrl} target="_blank" rel="noopener noreferrer" className={styles.cloudLink}>
-              Открыть в облаке ↗
-            </a>
-          </div>
-          <audio ref={audioRef} controls src={audioUrl} className={styles.audio} />
-          <p className={styles.audioHint}>
-            Ссылка на файл в облачном хранилище действует ограниченное время — открывайте со страницы звонка.
-          </p>
+          {call.transcription && (
+            <div className={styles.section}>
+              <h2 className={styles.sectionTitle}>Транскрипция</h2>
+              {call.transcription.segments.length > 0 ? (
+                <div className={styles.transcriptSegments}>
+                  {call.transcription.segments.map((seg, i) => (
+                    <div
+                      key={i}
+                      className={audioUrl ? `${styles.segmentRow} ${styles.segmentRowClickable}` : styles.segmentRow}
+                      onClick={audioUrl ? () => seekTo(seg.start) : undefined}
+                    >
+                      <span className={styles.segmentTime}>{fmtSeconds(seg.start)}</span>
+                      <span className={styles.segmentText}>{seg.text}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <pre className={styles.transcript}>{call.transcription.full_text}</pre>
+              )}
+            </div>
+          )}
         </div>
       )}
 
