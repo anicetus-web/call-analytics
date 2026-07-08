@@ -160,6 +160,57 @@
 }
 .qualValueWeak { color: #fca5a5; }
 
+.qualStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.qualStatBlock {
+  background: var(--bg-hover);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+.qualStatBlock .qualLabel, .qualStatBlock .qualLabelWeak {
+  display: block;
+  margin-right: 0;
+  margin-bottom: 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.qualStatRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text);
+  padding: 3px 0;
+}
+
+.qualStatCount {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-faint);
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+.showAllLink {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: var(--accent-pink);
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  transition: opacity 0.15s;
+}
+.showAllLink:hover { opacity: 0.75; }
+
 .tiles {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -297,6 +348,32 @@
 .metricGroupBlock + .metricGroupBlock {
   margin-top: 6px;
   border-top: 1px solid var(--border);
+}
+
+/* Left column (regular criteria groups) + right column (forbidden-words
+   group), separated by a transparent gap and a subtle divider. */
+.metricSplit {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 28px;
+}
+@media (max-width: 900px) {
+  .metricSplit { grid-template-columns: 1fr; gap: 18px; }
+}
+
+.metricSplitLeft > .metricGroupBlock:first-child,
+.metricSplitRight > .metricGroupBlock:first-child {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: none;
+}
+
+.metricSplitRight {
+  padding-left: 28px;
+  border-left: 1px solid var(--border);
+}
+@media (max-width: 900px) {
+  .metricSplitRight { padding-left: 0; border-left: none; }
 }
 
 .metricGroupHead {

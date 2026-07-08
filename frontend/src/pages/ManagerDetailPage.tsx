@@ -8,7 +8,24 @@ import {
 import { IconPhoneWave, IconClock, IconTarget, IconTrend } from '../components/icons'
 import Avatar from '../components/Avatar'
 import SessionStatus from '../components/SessionStatus'
+import { TopErrorsTab } from './ErrorsPage'
 import styles from './ManagerDetailPage.module.css'
+
+const QUAL_PREVIEW_COUNT = 4
+
+// Most-repeated weak spots / pains across the fetched qualitative rows —
+// gives a quick "what usually needs work" read instead of forcing a scroll
+// through every single call to spot the pattern.
+function topStrings(rows: string[][], limit: number): { text: string; count: number }[] {
+  const counts = new Map<string, number>()
+  for (const list of rows) {
+    for (const s of list) counts.set(s, (counts.get(s) ?? 0) + 1)
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([text, count]) => ({ text, count }))
+}
 
 const PERIODS = [
   { key: 'day', label: 'День', days: 1 },
@@ -55,6 +72,7 @@ function scoreTierColor(avgScore: number): string {
 interface MetricGroupBlock {
   id: number
   name: string
+  groupType: MetricSummary['metric_group_type']
   items: MetricSummary[]
 }
 
@@ -66,7 +84,7 @@ function groupMetrics(metrics: MetricSummary[]): MetricGroupBlock[] {
   for (const m of metrics) {
     let block = byId.get(m.metric_group_id)
     if (!block) {
-      block = { id: m.metric_group_id, name: m.metric_group_name, items: [] }
+      block = { id: m.metric_group_id, name: m.metric_group_name, groupType: m.metric_group_type, items: [] }
       byId.set(m.metric_group_id, block)
       blocks.push(block)
     }
@@ -116,6 +134,7 @@ export default function ManagerDetailPage() {
   const [qualPeriod, setQualPeriod] = useState<QualPeriodKey>('week')
   const [qualitative, setQualitative] = useState<QualitativeCallSummary[]>([])
   const [qualLoading, setQualLoading] = useState(true)
+  const [qualExpanded, setQualExpanded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [managerError, setManagerError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -173,6 +192,7 @@ export default function ManagerDetailPage() {
 
   useEffect(() => {
     setQualLoading(true)
+    setQualExpanded(false)
     const projectId = tab === 'all' ? undefined : tab
     const qualDays: Record<Exclude<QualPeriodKey, 'all'>, number> = { day: 1, week: 7, month: 30 }
     const dateFrom = qualPeriod === 'all' ? undefined : isoDaysAgo(qualDays[qualPeriod] - 1)
@@ -335,32 +355,78 @@ export default function ManagerDetailPage() {
               <div className={styles.empty}>Загрузка…</div>
             ) : qualitative.length === 0 ? (
               <div className={styles.empty}>Нет разобранных звонков за этот период</div>
-            ) : (
-              <div className={styles.qualList}>
-                {qualitative.map(q => (
-                  <Link to={`/calls/${q.call_id}`} key={`${q.call_id}-${q.metric_group_id}`} className={styles.qualCard}>
-                    <div className={styles.qualCardDate}>
-                      <span className={styles.qualGroupBadge}>{q.metric_group_name}</span>
-                      {new Date(q.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            ) : (() => {
+              const weakStats = topStrings(qualitative.map(q => q.weak_spots), 3)
+              const painStats = topStrings(qualitative.map(q => q.pains_found), 3)
+              const visible = qualExpanded ? qualitative : qualitative.slice(0, QUAL_PREVIEW_COUNT)
+              return (
+                <>
+                  {(weakStats.length > 0 || painStats.length > 0) && (
+                    <div className={styles.qualStats}>
+                      {weakStats.length > 0 && (
+                        <div className={styles.qualStatBlock}>
+                          <span className={styles.qualLabelWeak}>Чаще всего стоит усилить</span>
+                          {weakStats.map(s => (
+                            <div key={s.text} className={styles.qualStatRow}>
+                              <span>{s.text}</span>
+                              <span className={styles.qualStatCount}>×{s.count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {painStats.length > 0 && (
+                        <div className={styles.qualStatBlock}>
+                          <span className={styles.qualLabel}>Частые боли клиентов</span>
+                          {painStats.map(s => (
+                            <div key={s.text} className={styles.qualStatRow}>
+                              <span>{s.text}</span>
+                              <span className={styles.qualStatCount}>×{s.count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    {q.summary && <p className={styles.qualSummary}>{q.summary}</p>}
-                    {q.pains_found.length > 0 && (
-                      <div className={styles.qualRow}>
-                        <span className={styles.qualLabel}>Боли:</span>
-                        <span className={styles.qualValue}>{q.pains_found.join(', ')}</span>
-                      </div>
-                    )}
-                    {q.weak_spots.length > 0 && (
-                      <div className={styles.qualRow}>
-                        <span className={styles.qualLabelWeak}>Усилить:</span>
-                        <span className={styles.qualValueWeak}>{q.weak_spots.join(' · ')}</span>
-                      </div>
-                    )}
-                  </Link>
-                ))}
-              </div>
-            )}
+                  )}
+                  <div className={styles.qualList}>
+                    {visible.map(q => (
+                      <Link to={`/calls/${q.call_id}`} key={`${q.call_id}-${q.metric_group_id}`} className={styles.qualCard}>
+                        <div className={styles.qualCardDate}>
+                          <span className={styles.qualGroupBadge}>{q.metric_group_name}</span>
+                          {new Date(q.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        {q.summary && <p className={styles.qualSummary}>{q.summary}</p>}
+                        {q.pains_found.length > 0 && (
+                          <div className={styles.qualRow}>
+                            <span className={styles.qualLabel}>Боли:</span>
+                            <span className={styles.qualValue}>{q.pains_found.join(', ')}</span>
+                          </div>
+                        )}
+                        {q.weak_spots.length > 0 && (
+                          <div className={styles.qualRow}>
+                            <span className={styles.qualLabelWeak}>Усилить:</span>
+                            <span className={styles.qualValueWeak}>{q.weak_spots.join(' · ')}</span>
+                          </div>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                  {!qualExpanded && qualitative.length > QUAL_PREVIEW_COUNT && (
+                    <button type="button" className={styles.showAllLink} onClick={() => setQualExpanded(true)}>
+                      Показать ещё ({qualitative.length - QUAL_PREVIEW_COUNT})
+                    </button>
+                  )}
+                </>
+              )
+            })()}
           </div>
+
+          {tab !== 'all' && (
+            <div className={styles.section}>
+              <h2 className={styles.sectionTitle}>Топ ошибок</h2>
+              <p className={styles.sectionSubtitle}>Что этому менеджеру стоит улучшить в первую очередь</p>
+              <TopErrorsTab dateFrom={dateFrom} projectId={tab as number} userId={userId} limit={5} />
+            </div>
+          )}
 
           <div className={styles.grid}>
             {tab !== 'all' && (
@@ -368,8 +434,8 @@ export default function ManagerDetailPage() {
                 <h2 className={styles.sectionTitle}>По критериям оценки</h2>
                 {metrics.length === 0 ? (
                   <div className={styles.empty}>Нет оценённых звонков за этот период</div>
-                ) : (
-                  groupMetrics(metrics).map(group => {
+                ) : (() => {
+                  const renderGroup = (group: MetricGroupBlock) => {
                     const groupAvg = group.items.reduce((s, i) => s + i.avg_score, 0) / group.items.length
                     return (
                       <div key={group.id} className={styles.metricGroupBlock}>
@@ -399,8 +465,21 @@ export default function ManagerDetailPage() {
                         </div>
                       </div>
                     )
-                  })
-                )}
+                  }
+
+                  const allGroups = groupMetrics(metrics)
+                  const rightGroups = allGroups.filter(g => g.groupType === 'forbidden_keywords')
+                  const leftGroups = allGroups.filter(g => g.groupType !== 'forbidden_keywords')
+
+                  if (rightGroups.length === 0) return leftGroups.map(renderGroup)
+
+                  return (
+                    <div className={styles.metricSplit}>
+                      <div className={styles.metricSplitLeft}>{leftGroups.map(renderGroup)}</div>
+                      <div className={styles.metricSplitRight}>{rightGroups.map(renderGroup)}</div>
+                    </div>
+                  )
+                })()}
               </div>
             )}
 
