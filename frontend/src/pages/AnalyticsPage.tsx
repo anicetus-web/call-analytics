@@ -335,11 +335,11 @@ export default function AnalyticsPage() {
             <div className={`${styles.section} ${styles.sectionAccentBlue}`} ref={errorsRef}>
               <h2 className={styles.sectionTitle}>Ошибки менеджеров</h2>
               <ManagerErrorsTab dateFrom={dateFrom || undefined} dateTo={dateTo || undefined} projectId={projectId ? Number(projectId) : undefined} compact />
-              <Link to="/analytics/errors?tab=managers" className={styles.jumpToManagersBtn}>Перейти к ошибкам менеджеров →</Link>
+              <Link to="/analytics/errors?tab=managers" className={styles.jumpToManagersBtnBlue}>Перейти к ошибкам менеджеров →</Link>
             </div>
 
             {!selectedManager && (
-              <div className={styles.section} ref={managersRef}>
+              <div className={`${styles.section} ${styles.sectionAccentPink}`} ref={managersRef}>
                 <h2 className={styles.sectionTitle}>
                   Топ менеджеров <span className={styles.sectionHint}>за последние 7 дней</span>
                 </h2>

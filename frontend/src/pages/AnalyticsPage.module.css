@@ -220,17 +220,18 @@
 }
 .sectionAccentBlue .sectionTitleIcon { color: var(--accent-blue); }
 
-.jumpToManagersBtn {
+.jumpToManagersBtn, .jumpToManagersBtnBlue {
   display: block;
   text-align: center;
   margin-top: auto;
   padding-top: 12px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--accent-pink);
   transition: opacity 0.15s;
 }
-.jumpToManagersBtn:hover { opacity: 0.75; }
+.jumpToManagersBtn { color: var(--accent-pink); }
+.jumpToManagersBtnBlue { color: var(--accent-blue); }
+.jumpToManagersBtn:hover, .jumpToManagersBtnBlue:hover { opacity: 0.75; }
 
 .sectionHeadRow {
   display: flex;
