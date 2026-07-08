@@ -867,7 +867,7 @@ async def top_errors(
     user_id: int | None = Query(default=None),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
-    limit: int = Query(default=5, ge=1, le=20),
+    limit: int = Query(default=5, ge=1, le=100),
 ) -> list[TopErrorItem]:
     return await _fetch_top_errors(
         db, project_id=project_id, user_id=user_id, date_from=date_from, date_to=date_to, limit=limit,

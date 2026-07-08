@@ -81,6 +81,7 @@ export function TopErrorsTab({ dateFrom, dateTo, projectId, userId, limit = 5 }:
   const [callsByError, setCallsByError] = useState<Record<number, TopErrorCallItem[] | 'loading' | 'error'>>({})
   const [search, setSearch] = useState('')
   const [showAll, setShowAll] = useState<Record<number, boolean>>({})
+  const [errorsExpanded, setErrorsExpanded] = useState(false)
   const requestIdRef = useRef(0)
 
   useEffect(() => {
@@ -90,10 +91,19 @@ export function TopErrorsTab({ dateFrom, dateTo, projectId, userId, limit = 5 }:
     setManagersByError({})
     setCallsByError({})
     setShowAll({})
+    setErrorsExpanded(false)
     getTopErrors({ dateFrom, dateTo, projectId, userId }, limit)
       .then(data => { if (requestId === requestIdRef.current) setErrors(data) })
       .finally(() => { if (requestId === requestIdRef.current) setLoading(false) })
   }, [dateFrom, dateTo, projectId, userId, limit])
+
+  function showAllErrors() {
+    setErrorsExpanded(true)
+    setLoading(true)
+    getTopErrors({ dateFrom, dateTo, projectId, userId }, 100)
+      .then(setErrors)
+      .finally(() => setLoading(false))
+  }
 
   function toggle(e: TopErrorItem) {
     const id = e.metric_item_id
@@ -187,6 +197,11 @@ export function TopErrorsTab({ dateFrom, dateTo, projectId, userId, limit = 5 }:
           </div>
         )
       })}
+      {!errorsExpanded && errors.length === limit && (
+        <button type="button" className={styles.showAllBtn} onClick={showAllErrors}>
+          Показать все ошибки
+        </button>
+      )}
     </div>
   )
 }
