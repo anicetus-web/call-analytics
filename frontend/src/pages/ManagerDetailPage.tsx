@@ -428,8 +428,10 @@ export default function ManagerDetailPage() {
 
           {tab !== 'all' && (
             <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>Топ ошибок</h2>
-              <p className={styles.sectionSubtitle}>Что этому менеджеру стоит улучшить в первую очередь</p>
+              <div className={styles.titleRow}>
+                <h2 className={styles.sectionTitle}>Топ ошибок</h2>
+                <p className={styles.sectionSubtitle}>Что этому менеджеру стоит улучшить в первую очередь</p>
+              </div>
               <TopErrorsTab dateFrom={dateFrom} projectId={tab as number} userId={userId} limit={5} />
             </div>
           )}

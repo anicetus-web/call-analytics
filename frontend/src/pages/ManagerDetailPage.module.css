@@ -91,6 +91,16 @@
   margin-top: 2px;
 }
 
+.titleRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.titleRow .sectionTitle { margin-bottom: 0; }
+.titleRow .sectionSubtitle { margin-top: 0; }
+
 .qualHead {
   display: flex;
   align-items: flex-start;
