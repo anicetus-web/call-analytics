@@ -154,7 +154,11 @@ export default function ManagerDetailPage() {
     Promise.all([getManagers(), getProjects(true)])
       .then(([managers, allProjects]) => {
         setManager(managers.find(m => m.id === userId) ?? null)
-        setProjects(allProjects.filter(p => p.members.some(m => m.id === userId)))
+        const memberProjects = allProjects.filter(p => p.members.some(m => m.id === userId))
+        setProjects(memberProjects)
+        // Criteria/errors are per-project, so default to a real project instead
+        // of "Все проекты" — matches the same change on the Аналитика page.
+        setTab(prev => prev !== 'all' ? prev : (memberProjects[0] ? memberProjects[0].id : 'all'))
       })
       .catch(() => setManagerError('Не удалось загрузить менеджера'))
       .finally(() => setManagerLoaded(true))
@@ -242,9 +246,11 @@ export default function ManagerDetailPage() {
 
       <div className={styles.tabsRow}>
         <div className={styles.tabs}>
-          <button className={tab === 'all' ? styles.activeTab : styles.tab} onClick={() => setTab('all')}>
-            Все проекты
-          </button>
+          {projects.length === 0 && (
+            <button className={tab === 'all' ? styles.activeTab : styles.tab} onClick={() => setTab('all')}>
+              Все проекты
+            </button>
+          )}
           {projects.map(p => (
             <button
               key={p.id}
