@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  getKpi, getTopErrorCalls, getManagersTrend, getKeywords,
+  getKpi, getTopErrorCalls, getManagersTrend,
   getMetricSummary, getProjects, getManagers,
-  Kpi, TopErrorCallItem, ManagerTrendItem, KeywordItem, MetricSummary, Project, Manager,
+  Kpi, TopErrorCallItem, ManagerTrendItem, MetricSummary, Project, Manager,
 } from '../api'
 import { IconTarget, IconTrend, IconAlert, IconPhoneWave } from '../components/icons'
 import Avatar from '../components/Avatar'
@@ -21,6 +21,7 @@ function scoreTierColor(avgScore: number): string {
 interface SkillGroup {
   id: number
   name: string
+  groupType: MetricSummary['metric_group_type']
   items: MetricSummary[]
 }
 
@@ -32,7 +33,7 @@ function groupMetrics(metrics: MetricSummary[]): SkillGroup[] {
   for (const m of metrics) {
     let block = byId.get(m.metric_group_id)
     if (!block) {
-      block = { id: m.metric_group_id, name: m.metric_group_name, items: [] }
+      block = { id: m.metric_group_id, name: m.metric_group_name, groupType: m.metric_group_type, items: [] }
       byId.set(m.metric_group_id, block)
       blocks.push(block)
     }
@@ -120,7 +121,6 @@ export default function AnalyticsPage() {
 
   const [kpi, setKpi] = useState<Kpi | null>(null)
   const [managersTrend, setManagersTrend] = useState<ManagerTrendItem[]>([])
-  const [keywords, setKeywords] = useState<KeywordItem[]>([])
   const [skills, setSkills] = useState<MetricSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -167,10 +167,6 @@ export default function AnalyticsPage() {
     const requestId = ++requestIdRef.current
     const numericProjectId = projectId ? Number(projectId) : undefined
     const numericManagerId = managerId ? Number(managerId) : undefined
-    const params = {
-      projectId: numericProjectId, userId: numericManagerId,
-      dateFrom: dateFrom || undefined, dateTo: dateTo || undefined,
-    }
 
     const skillsPromise = numericProjectId
       ? getMetricSummary(numericProjectId, dateFrom || undefined, dateTo || undefined)
@@ -179,14 +175,12 @@ export default function AnalyticsPage() {
     Promise.all([
       getKpi(numericProjectId, numericManagerId),
       getManagersTrend(numericProjectId),
-      getKeywords(params, 16),
       skillsPromise,
     ])
-      .then(([kp, mt, kw, sk]) => {
+      .then(([kp, mt, sk]) => {
         if (requestId !== requestIdRef.current) return
         setKpi(kp)
         setManagersTrend(mt)
-        setKeywords(kw)
         setSkills(sk)
       })
       .catch(() => {
@@ -394,106 +388,90 @@ export default function AnalyticsPage() {
             )}
           </div>
 
-          {/* Skills take two thirds of the row, frequent words the last third. */}
-          <div className={styles.splitRow}>
-            <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>Навыки и соблюдение скрипта</h2>
-              <p className={styles.sectionDesc}>Где менеджеры стабильно теряют баллы AI</p>
-              {!projectId ? (
-                <div className={styles.empty}>Выберите проект в фильтре, чтобы увидеть разбивку — у каждого свои критерии</div>
-              ) : skills.length === 0 ? (
-                <div className={styles.empty}>Нет оценённых звонков за этот период</div>
-              ) : (
-                <div className={styles.skillsRow}>
-                  {groupMetrics(skills).map(group => {
-                   const groupAvg = group.items.reduce((s, i) => s + i.avg_score, 0) / group.items.length
-                   return (
-                    <div key={group.id} className={styles.skillGroup}>
-                     <div className={styles.skillGroupHead}>
-                       <span className={styles.skillGroupName}>{group.name}</span>
-                       <span className={styles.skillGroupScore} style={{ color: scoreTierColor(groupAvg) }}>
-                         {Math.round(groupAvg * 100)}%
-                       </span>
-                     </div>
-                     <div className={styles.metricTable}>
-                    {group.items.map(m => {
-                      const isOpen = expandedSkill === m.metric_item_id
-                      const calls = skillCalls[m.metric_item_id]
-                      const pct = Math.round(m.avg_score * 100)
-                      return (
-                        <div key={m.metric_item_id} className={styles.errorItem}>
+          <div className={styles.section} style={{ marginTop: 16 }}>
+            <h2 className={styles.sectionTitle}>Навыки и соблюдение скрипта</h2>
+            <p className={styles.sectionDesc}>Где менеджеры стабильно теряют баллы AI</p>
+            {!projectId ? (
+              <div className={styles.empty}>Выберите проект в фильтре, чтобы увидеть разбивку — у каждого свои критерии</div>
+            ) : skills.length === 0 ? (
+              <div className={styles.empty}>Нет оценённых звонков за этот период</div>
+            ) : (() => {
+              const allGroups = groupMetrics(skills)
+              const rightGroups = allGroups.filter(g => g.groupType === 'forbidden_keywords')
+              const leftGroups = allGroups.filter(g => g.groupType !== 'forbidden_keywords')
+
+              const renderGroup = (group: SkillGroup) => {
+                const groupAvg = group.items.reduce((s, i) => s + i.avg_score, 0) / group.items.length
+                return (
+                  <div key={group.id} className={styles.skillGroup}>
+                    <div className={styles.skillGroupHead}>
+                      <span className={styles.skillGroupName}>{group.name}</span>
+                      <span className={styles.skillGroupScore} style={{ color: scoreTierColor(groupAvg) }}>
+                        {Math.round(groupAvg * 100)}%
+                      </span>
+                    </div>
+                    <div className={styles.skillCardGrid}>
+                      {group.items.map(m => {
+                        const isOpen = expandedSkill === m.metric_item_id
+                        const pct = Math.round(m.avg_score * 100)
+                        return (
                           <button
+                            key={m.metric_item_id}
                             type="button"
-                            className={styles.metricRow}
+                            className={`${styles.skillCard} ${isOpen ? styles.skillCardOpen : ''}`}
                             onClick={() => toggleSkill(m.metric_item_id)}
                             aria-expanded={isOpen}
                           >
-                            <div className={styles.scoreRingWrap}>
+                            <div className={styles.scoreRingWrapLg}>
                               <div
                                 className={styles.scoreRing}
                                 style={{ background: `conic-gradient(${scoreTierColor(m.avg_score)} ${pct * 3.6}deg, var(--bg-hover) 0deg)` }}
                               />
                               <span className={styles.scoreRingValue}>{pct}%</span>
                             </div>
-                            <div className={styles.metricInfo}>
-                              <span className={styles.metricName}>
-                                <span className={`${styles.errorChevron} ${isOpen ? styles.errorChevronOpen : ''}`}>▸</span>
-                                {m.name}
-                              </span>
-                              <span className={styles.callCnt}>{m.call_count} зв.</span>
-                            </div>
+                            <span className={styles.skillCardName}>{m.name}</span>
+                            <span className={styles.skillCardCnt}>{m.call_count} зв.</span>
                           </button>
-                          {isOpen && (
-                            <div className={styles.errorCalls}>
-                              {calls === 'loading' || calls === undefined ? (
-                                <DrillDownSkeleton />
-                              ) : calls === 'error' ? (
-                                <div className={styles.errorCallsState}>Не удалось загрузить звонки</div>
-                              ) : calls.length === 0 ? (
-                                <div className={styles.errorCallsState}>Провалов по этому критерию не найдено</div>
-                              ) : (
-                                <>
-                                  {calls.map(c => <DrillDownCallRow key={c.call_id} call={c} />)}
-                                  {calls.length >= 4 && (
-                                    <div className={styles.errorCallsState}>Показаны последние {calls.length}</div>
-                                  )}
-                                </>
+                        )
+                      })}
+                    </div>
+                    {group.items.map(m => {
+                      const isOpen = expandedSkill === m.metric_item_id
+                      if (!isOpen) return null
+                      const calls = skillCalls[m.metric_item_id]
+                      return (
+                        <div key={m.metric_item_id} className={styles.errorCalls}>
+                          <div className={styles.skillCallsLabel}>{m.name}</div>
+                          {calls === 'loading' || calls === undefined ? (
+                            <DrillDownSkeleton />
+                          ) : calls === 'error' ? (
+                            <div className={styles.errorCallsState}>Не удалось загрузить звонки</div>
+                          ) : calls.length === 0 ? (
+                            <div className={styles.errorCallsState}>Провалов по этому критерию не найдено</div>
+                          ) : (
+                            <>
+                              {calls.map(c => <DrillDownCallRow key={c.call_id} call={c} />)}
+                              {calls.length >= 4 && (
+                                <div className={styles.errorCallsState}>Показаны последние {calls.length}</div>
                               )}
-                            </div>
+                            </>
                           )}
                         </div>
                       )
                     })}
-                     </div>
-                    </div>
-                   )
-                  })}
-                </div>
-              )}
-            </div>
+                  </div>
+                )
+              }
 
-            <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>Часто встречающиеся слова</h2>
-              <p className={styles.sectionDesc}>Что чаще всего звучит в разговорах с клиентами, по транскрибации</p>
-              {keywords.length === 0 ? (
-                <div className={styles.empty}>Нет транскрибаций за выбранный период</div>
-              ) : (
-                <div className={styles.keywordList}>
-                  {keywords.slice(0, 8).map(k => (
-                    <div key={k.word} className={styles.keywordRow}>
-                      <span className={styles.keywordWord}>{k.word}</span>
-                      <div className={styles.keywordBarTrack}>
-                        <div
-                          className={styles.keywordBarFill}
-                          style={{ width: `${(k.count / keywords[0].count) * 100}%` }}
-                        />
-                      </div>
-                      <span className={styles.keywordCount}>{k.count}</span>
-                    </div>
-                  ))}
+              return (
+                <div className={rightGroups.length > 0 ? styles.skillsSplit : styles.skillsRow}>
+                  <div className={styles.skillsRow}>{leftGroups.map(renderGroup)}</div>
+                  {rightGroups.length > 0 && (
+                    <div className={styles.skillsRowRight}>{rightGroups.map(renderGroup)}</div>
+                  )}
                 </div>
-              )}
-            </div>
+              )
+            })()}
           </div>
         </>
       )}

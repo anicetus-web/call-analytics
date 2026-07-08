@@ -304,6 +304,14 @@
   color: var(--text);
 }
 
+.scoreRingWrapLg {
+  width: 56px;
+  height: 56px;
+  position: relative;
+  flex-shrink: 0;
+}
+.scoreRingWrapLg .scoreRingValue { font-size: 13px; }
+
 .metricInfo {
   display: flex;
   flex-direction: column;
@@ -685,6 +693,30 @@
 }
 .showAllLink:hover { opacity: 0.75; }
 
+/* Left column (regular groups) + right column (forbidden-words group),
+   separated by a transparent gap instead of a hard border. */
+.skillsSplit {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 28px;
+  flex: 1;
+  min-height: 0;
+}
+@media (max-width: 900px) {
+  .skillsSplit { grid-template-columns: 1fr; gap: 18px; }
+}
+
+.skillsRowRight {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-left: 28px;
+  border-left: 1px solid var(--border);
+}
+@media (max-width: 900px) {
+  .skillsRowRight { padding-left: 0; border-left: none; }
+}
+
 .skillsRow {
   display: flex;
   flex-direction: column;
@@ -697,7 +729,7 @@
 .skillGroup {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 .skillGroup + .skillGroup {
   padding-top: 16px;
@@ -721,6 +753,53 @@
   font-size: 18px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+.skillCardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 12px;
+}
+
+.skillCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 16px 10px;
+  background: var(--bg-hover);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition: transform 0.18s var(--ease-out), background 0.18s var(--ease-out), border-color 0.18s var(--ease-out);
+}
+.skillCard:hover {
+  transform: translateY(-3px);
+  background: var(--bg-elevated);
+}
+.skillCardOpen {
+  border-color: var(--accent-pink);
+  background: var(--bg-elevated);
+}
+
+.skillCardName {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.skillCardCnt {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.skillCallsLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
 }
 
 .keywordList {
