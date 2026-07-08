@@ -11,7 +11,7 @@ import SessionStatus from '../components/SessionStatus'
 import { TopErrorsTab } from './ErrorsPage'
 import styles from './ManagerDetailPage.module.css'
 
-const QUAL_PREVIEW_COUNT = 4
+const QUAL_PREVIEW_COUNT = 2
 
 // Most-repeated weak spots / pains across the fetched qualitative rows —
 // gives a quick "what usually needs work" read instead of forcing a scroll
@@ -418,6 +418,12 @@ export default function ManagerDetailPage() {
                 </>
               )
             })()}
+            <Link
+              to={tab !== 'all' ? `/calls?project_id=${tab}&user_id=${userId}` : `/calls?user_id=${userId}`}
+              className={styles.showAllLink}
+            >
+              Перейти к звонкам {manager.name} →
+            </Link>
           </div>
 
           {tab !== 'all' && (

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { getCalls, getProjects, getManagers, CallListItem, CallStatus, Project, Manager } from '../api'
 import { IconAlert } from '../components/icons'
 import styles from './CallsPage.module.css'
@@ -32,6 +32,7 @@ function fmtDuration(sec: number | null): string {
 }
 
 export default function CallsPage() {
+  const [searchParams] = useSearchParams()
   const [calls, setCalls] = useState<CallListItem[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [managers, setManagers] = useState<Manager[]>([])
@@ -40,8 +41,8 @@ export default function CallsPage() {
   const [hasMore, setHasMore] = useState(false)
   const [offset, setOffset] = useState(0)
 
-  const [projectId, setProjectId] = useState('')
-  const [userId, setUserId] = useState('')
+  const [projectId, setProjectId] = useState(searchParams.get('project_id') ?? '')
+  const [userId, setUserId] = useState(searchParams.get('user_id') ?? '')
   const [status, setStatus] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')

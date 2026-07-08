@@ -291,16 +291,16 @@ export default function ProjectDetailPage() {
 
       <div className={styles.tabs}>
         <button
-          className={tab === 'calls' ? styles.activeTab : styles.tab}
-          onClick={() => setTab('calls')}
-        >
-          Звонки ({calls.length}{hasMore ? '+' : ''})
-        </button>
-        <button
           className={tab === 'analytics' ? styles.activeTab : styles.tab}
           onClick={() => setTab('analytics')}
         >
           Аналитика
+        </button>
+        <button
+          className={tab === 'calls' ? styles.activeTab : styles.tab}
+          onClick={() => setTab('calls')}
+        >
+          Звонки ({calls.length}{hasMore ? '+' : ''})
         </button>
         <button
           className={tab === 'settings' ? styles.activeTab : styles.tab}
