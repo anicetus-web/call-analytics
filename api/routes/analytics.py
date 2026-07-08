@@ -182,6 +182,20 @@ class TopErrorCallItem(BaseModel):
     score: float
 
 
+class ErrorManagerItem(BaseModel):
+    user_id: int
+    name: str
+    fail_count: int
+
+
+class ManagerErrorSummaryOut(BaseModel):
+    user_id: int
+    name: str
+    call_count: int
+    total_errors: int
+    top_errors: list[TopErrorItem]
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 async def _assert_project_exists(db: AsyncSession, project_id: int) -> None:
@@ -909,6 +923,81 @@ async def top_error_calls(
         )
         for r in rows
     ]
+
+
+@router.get("/top-errors/{metric_item_id}/managers", response_model=list[ErrorManagerItem])
+async def top_error_managers(
+    metric_item_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    project_id: int | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+) -> list[ErrorManagerItem]:
+    """Every manager who ever failed this metric item (score < 1.0), ranked by
+    how many times, most first. Returns the full list (not just a top-N) —
+    the "Ошибки" section's manager search/drilldown filters this client-side,
+    which is cheap even at a few hundred managers."""
+    result = await db.execute(select(MetricItem).where(MetricItem.id == metric_item_id))
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Metric item not found")
+
+    fail_count_expr = func.count(AnalysisResult.id)
+    q = _apply_common_filters(
+        select(User.id, User.name, fail_count_expr.label("fail_count"))
+        .join(Call, Call.user_id == User.id)
+        .join(AnalysisResult, AnalysisResult.call_id == Call.id)
+        .where(
+            AnalysisResult.metric_item_id == metric_item_id,
+            AnalysisResult.score < 1.0,
+            Call.status == CallStatus.DONE,
+        )
+        .group_by(User.id, User.name)
+        .order_by(fail_count_expr.desc()),
+        project_id=project_id, date_from=date_from, date_to=date_to,
+    )
+    rows = (await db.execute(q)).all()
+    return [ErrorManagerItem(user_id=r.id, name=r.name, fail_count=r.fail_count) for r in rows]
+
+
+@router.get("/managers/{user_id}/error-summary", response_model=ManagerErrorSummaryOut)
+async def manager_error_summary(
+    user_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[TokenData, Depends(require_admin)],
+    project_id: int | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+) -> ManagerErrorSummaryOut:
+    """Card data for the "Ошибки менеджеров" tab: how many calls this manager
+    had, how many total scoring failures across all of them, and their top-5
+    most frequent failures."""
+    await _assert_user_exists(db, user_id)
+    user_row = (await db.execute(select(User.name).where(User.id == user_id))).scalar_one()
+
+    calls_q = _apply_common_filters(
+        select(func.count(func.distinct(Call.id)))
+        .where(Call.status == CallStatus.DONE),
+        project_id=project_id, date_from=date_from, date_to=date_to, user_id=user_id,
+    )
+    call_count = (await db.execute(calls_q)).scalar() or 0
+
+    errors_q = _apply_common_filters(
+        select(func.count(AnalysisResult.id))
+        .join(Call, Call.id == AnalysisResult.call_id)
+        .where(Call.status == CallStatus.DONE, AnalysisResult.score < 1.0),
+        project_id=project_id, date_from=date_from, date_to=date_to, user_id=user_id,
+    )
+    total_errors = (await db.execute(errors_q)).scalar() or 0
+
+    top_errors = await _fetch_top_errors(
+        db, project_id=project_id, date_from=date_from, date_to=date_to, limit=5, user_id=user_id,
+    )
+
+    return ManagerErrorSummaryOut(
+        user_id=user_id, name=user_row, call_count=call_count,
+        total_errors=total_errors, top_errors=top_errors,
+    )
 
 
 @router.get("/quality-distribution", response_model=QualityDistributionOut)

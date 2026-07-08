@@ -208,6 +208,15 @@
   margin-bottom: 10px;
 }
 
+.sectionHeadRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.sectionHeadRow .sectionTitle { margin-bottom: 10px; }
+.sectionHeadRow .showAllLink { margin-top: 0; padding-top: 0; white-space: nowrap; }
+
 .sectionDesc {
   font-size: 11px;
   color: var(--text-faint);

@@ -398,6 +398,30 @@ export const getTopErrorCalls = (metricItemId: number, params: GlobalAnalyticsPa
     params: { user_id: params.userId, date_from: params.dateFrom, date_to: params.dateTo, limit },
   }).then(r => r.data)
 
+export interface ErrorManagerItem {
+  user_id: number
+  name: string
+  fail_count: number
+}
+
+export const getTopErrorManagers = (metricItemId: number, params: GlobalAnalyticsParams = {}) =>
+  api.get<ErrorManagerItem[]>(`/analytics/top-errors/${metricItemId}/managers`, {
+    params: { project_id: params.projectId, date_from: params.dateFrom, date_to: params.dateTo },
+  }).then(r => r.data)
+
+export interface ManagerErrorSummary {
+  user_id: number
+  name: string
+  call_count: number
+  total_errors: number
+  top_errors: TopErrorItem[]
+}
+
+export const getManagerErrorSummary = (userId: number, params: GlobalAnalyticsParams = {}) =>
+  api.get<ManagerErrorSummary>(`/analytics/managers/${userId}/error-summary`, {
+    params: { project_id: params.projectId, date_from: params.dateFrom, date_to: params.dateTo },
+  }).then(r => r.data)
+
 export const getQualityDistribution = (params: GlobalAnalyticsParams = {}) =>
   api.get<QualityDistribution>('/analytics/quality-distribution', { params: globalParams(params) }).then(r => r.data)
 

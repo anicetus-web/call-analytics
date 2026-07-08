@@ -1,13 +1,13 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  getKpi, getTopErrors, getTopErrorCalls, getQualityDistribution, getManagersTrend, getKeywords,
+  getKpi, getTopErrorCalls, getManagersTrend, getKeywords,
   getMetricSummary, getProjects, getManagers,
-  Kpi, TopErrorItem, TopErrorCallItem, QualityDistribution, ManagerTrendItem, KeywordItem, MetricSummary, Project, Manager,
+  Kpi, TopErrorCallItem, ManagerTrendItem, KeywordItem, MetricSummary, Project, Manager,
 } from '../api'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { IconTarget, IconTrend, IconAlert, IconPhoneWave } from '../components/icons'
 import Avatar from '../components/Avatar'
+import { TopErrorsTab, ManagerErrorsTab } from './ErrorsPage'
 import styles from './AnalyticsPage.module.css'
 
 const QUALITY_COLORS = { high: '#34d399', medium: '#eab308', low: '#fb7185' }
@@ -39,16 +39,6 @@ function groupMetrics(metrics: MetricSummary[]): SkillGroup[] {
     block.items.push(m)
   }
   return blocks
-}
-
-const chartTooltipStyle = {
-  contentStyle: {
-    background: 'var(--bg-elevated)',
-    border: '1px solid var(--border)',
-    borderRadius: 8,
-    color: 'var(--text)',
-  },
-  labelStyle: { color: 'var(--text-muted)' },
 }
 
 function fmtPct(v: number): string {
@@ -129,22 +119,19 @@ export default function AnalyticsPage() {
   const [dateTo, setDateTo] = useState('')
 
   const [kpi, setKpi] = useState<Kpi | null>(null)
-  const [quality, setQuality] = useState<QualityDistribution | null>(null)
-  const [topErrors, setTopErrors] = useState<TopErrorItem[]>([])
   const [managersTrend, setManagersTrend] = useState<ManagerTrendItem[]>([])
   const [keywords, setKeywords] = useState<KeywordItem[]>([])
   const [skills, setSkills] = useState<MetricSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [expandedError, setExpandedError] = useState<number | null>(null)
-  const [errorCalls, setErrorCalls] = useState<Record<number, TopErrorCallItem[] | 'loading' | 'error'>>({})
   const [expandedSkill, setExpandedSkill] = useState<number | null>(null)
   const [skillCalls, setSkillCalls] = useState<Record<number, TopErrorCallItem[] | 'loading' | 'error'>>({})
 
   const requestIdRef = useRef(0)
   const qualityRef = useRef<HTMLDivElement>(null)
   const errorsRef = useRef<HTMLDivElement>(null)
+  const managersRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     Promise.all([getProjects(true), getManagers()])
@@ -191,17 +178,13 @@ export default function AnalyticsPage() {
 
     Promise.all([
       getKpi(numericProjectId, numericManagerId),
-      getQualityDistribution(params),
-      getTopErrors(params, 5),
       getManagersTrend(numericProjectId),
       getKeywords(params, 16),
       skillsPromise,
     ])
-      .then(([kp, ql, te, mt, kw, sk]) => {
+      .then(([kp, mt, kw, sk]) => {
         if (requestId !== requestIdRef.current) return
         setKpi(kp)
-        setQuality(ql)
-        setTopErrors(te)
         setManagersTrend(mt)
         setKeywords(kw)
         setSkills(sk)
@@ -218,46 +201,20 @@ export default function AnalyticsPage() {
   useEffect(() => { load() }, [load])
 
   // Reset drill-down state whenever the underlying filters change — a
-  // previously expanded error's call list would otherwise silently show
+  // previously expanded skill's call list would otherwise silently show
   // stale results scoped to the old filter combination.
   useEffect(() => {
-    setExpandedError(null)
-    setErrorCalls({})
     setExpandedSkill(null)
     setSkillCalls({})
   }, [projectId, managerId, dateFrom, dateTo])
 
-  function openError(next: number | null) {
-    setExpandedError(next)
-    if (next !== null && !errorCalls[next]) {
-      setErrorCalls(prev => ({ ...prev, [next]: 'loading' }))
-      getTopErrorCalls(next, {
-        userId: managerId ? Number(managerId) : undefined,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-      }, 4)
-        .then(calls => setErrorCalls(prev => ({ ...prev, [next]: calls })))
-        .catch(() => setErrorCalls(prev => ({ ...prev, [next]: 'error' })))
-    }
-  }
-
-  function toggleError(metricItemId: number) {
-    openError(expandedError === metricItemId ? null : metricItemId)
-  }
-
-  function scrollToQuality() {
-    qualityRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  function scrollToManagers() {
+    managersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   function handleMainProblemClick() {
     if (!kpi?.main_problem) return
-    // kpi.main_problem is always computed over a fixed last-7-days window,
-    // independent of this page's own date filter — if the filter is set to
-    // a different range, that metric may not be one of the top 5 for the
-    // range actually shown below, and there'd be nothing to expand under.
-    const visibleBelow = topErrors.some(e => e.metric_item_id === kpi.main_problem!.metric_item_id)
-    if (visibleBelow) openError(kpi.main_problem.metric_item_id)
-    errorsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    qualityRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   function toggleSkill(metricItemId: number) {
@@ -277,14 +234,6 @@ export default function AnalyticsPage() {
 
   const topManagers = managersTrend.slice(0, 3)
   const worstManagers = [...managersTrend].slice(3).reverse()
-
-  const qualityData = quality
-    ? [
-        { name: 'Высокое', key: 'high', value: quality.high },
-        { name: 'Среднее', key: 'medium', value: quality.medium },
-        { name: 'Низкое', key: 'low', value: quality.low },
-      ].filter(d => d.value > 0)
-    : []
 
   const scoreDelta = kpi ? fmtDelta(kpi.avg_score_delta) : null
 
@@ -327,7 +276,7 @@ export default function AnalyticsPage() {
       ) : !kpi ? null : (
         <>
           <div className={styles.tiles}>
-            <button type="button" className={`${styles.tile} ${styles.tileClickable}`} onClick={scrollToQuality}>
+            <button type="button" className={`${styles.tile} ${styles.tileClickable}`} onClick={scrollToManagers}>
               <span className={styles.tileIcon}><IconTarget size={18} /></span>
               <div>
                 <div className={styles.tileValue}>
@@ -335,7 +284,7 @@ export default function AnalyticsPage() {
                   {scoreDelta && <span className={scoreDelta.className}> {scoreDelta.text}</span>}
                 </div>
                 <div className={styles.tileLabel}>Средняя оценка AI за неделю</div>
-                <div className={styles.tileHint}>Смотреть распределение качества →</div>
+                <div className={styles.tileHint}>Смотреть по менеджерам →</div>
               </div>
             </button>
             {!selectedManager && (
@@ -367,7 +316,7 @@ export default function AnalyticsPage() {
                   {kpi.main_problem ? `${kpi.main_problem.fail_count} случаев` : '—'}
                 </div>
                 <div className={styles.tileLabel}>
-                  {kpi.main_problem ? kpi.main_problem.metric_name : 'Основная проблема за неделю'}
+                  {kpi.main_problem ? `${kpi.main_problem.metric_name} · за 7 дней` : 'Основная проблема за неделю'}
                 </div>
                 {kpi.main_problem && <div className={styles.tileHint}>Показать эти звонки →</div>}
               </div>
@@ -384,105 +333,20 @@ export default function AnalyticsPage() {
 
           <div className={styles.grid}>
             <div className={styles.section} ref={qualityRef}>
-              <h2 className={styles.sectionTitle}>Распределение качества звонков</h2>
-              {qualityData.length === 0 ? (
-                <div className={styles.empty}>Нет оценённых звонков за выбранный период</div>
-              ) : (
-                <div className={styles.donutRow}>
-                  <div className={styles.donutWrap}>
-                    <ResponsiveContainer width={220} height={220}>
-                      <PieChart>
-                        <Pie data={qualityData} dataKey="value" innerRadius={78} outerRadius={104} paddingAngle={3} cornerRadius={5} startAngle={90} endAngle={-270}>
-                          {qualityData.map(d => (
-                            <Cell key={d.key} fill={QUALITY_COLORS[d.key as keyof typeof QUALITY_COLORS]} stroke="none" />
-                          ))}
-                        </Pie>
-                        <Tooltip {...chartTooltipStyle} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className={styles.donutCenter}>
-                      <div className={styles.donutCenterValue}>{quality?.total}</div>
-                      <div className={styles.donutCenterLabel}>звонков</div>
-                    </div>
-                  </div>
-                  <div className={styles.donutLegend}>
-                    {qualityData.map(d => (
-                      <div key={d.key} className={styles.donutLegendRow}>
-                        <span className={styles.donutDot} style={{ background: QUALITY_COLORS[d.key as keyof typeof QUALITY_COLORS] }} />
-                        <span className={styles.donutLegendName}>{d.name}</span>
-                        <span className={styles.donutCount}>{d.value}</span>
-                        <span className={styles.donutPct}>
-                          {quality?.total ? Math.round((d.value / quality.total) * 100) : 0}%
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className={styles.sectionHeadRow}>
+                <h2 className={styles.sectionTitle}>Топ ошибок</h2>
+                <Link to="/analytics/errors" className={styles.showAllLink}>Раздел «Ошибки» →</Link>
+              </div>
+              <TopErrorsTab dateFrom={dateFrom || undefined} dateTo={dateTo || undefined} projectId={projectId ? Number(projectId) : undefined} userId={managerId ? Number(managerId) : undefined} />
             </div>
 
             <div className={styles.section} ref={errorsRef}>
-              <h2 className={styles.sectionTitle}>
-                Частые ошибки{selectedManager ? ` — ${selectedManager.name}` : ' менеджеров'}
-              </h2>
-              {topErrors.length === 0 ? (
-                <div className={styles.empty}>Нет данных за выбранный период</div>
-              ) : (
-                <div className={styles.errorList}>
-                  {topErrors.map(e => {
-                    const isOpen = expandedError === e.metric_item_id
-                    const calls = errorCalls[e.metric_item_id]
-                    return (
-                      <div key={e.metric_item_id} className={styles.errorItem}>
-                        <button
-                          type="button"
-                          className={styles.errorRow}
-                          onClick={() => toggleError(e.metric_item_id)}
-                          aria-expanded={isOpen}
-                        >
-                          <div className={styles.errorTop}>
-                            <span className={styles.errorName}>
-                              <span className={`${styles.errorChevron} ${isOpen ? styles.errorChevronOpen : ''}`}>▸</span>
-                              {e.metric_name}
-                              {!projectId && (
-                                <Link to={`/projects/${e.project_id}`} className={styles.errorProject} onClick={ev => ev.stopPropagation()}>
-                                  {' '}· {e.project_name}
-                                </Link>
-                              )}
-                            </span>
-                            <span className={styles.errorCount}>{e.fail_count} случаев</span>
-                          </div>
-                          <div className={styles.errorBarTrack}>
-                            <div className={styles.errorBarFill} style={{ width: `${e.fail_rate * 100}%` }} />
-                          </div>
-                        </button>
-                        {isOpen && (
-                          <div className={styles.errorCalls}>
-                            {calls === 'loading' || calls === undefined ? (
-                              <DrillDownSkeleton />
-                            ) : calls === 'error' ? (
-                              <div className={styles.errorCallsState}>Не удалось загрузить звонки</div>
-                            ) : calls.length === 0 ? (
-                              <div className={styles.errorCallsState}>Звонки не найдены</div>
-                            ) : (
-                              <>
-                                {calls.map(c => <DrillDownCallRow key={c.call_id} call={c} />)}
-                                {e.fail_count > calls.length && (
-                                  <div className={styles.errorCallsState}>Показаны последние {calls.length} из {e.fail_count}</div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+              <h2 className={styles.sectionTitle}>Ошибки менеджеров</h2>
+              <ManagerErrorsTab dateFrom={dateFrom || undefined} dateTo={dateTo || undefined} projectId={projectId ? Number(projectId) : undefined} compact />
             </div>
 
             {!selectedManager && (
-              <div className={styles.section}>
+              <div className={styles.section} ref={managersRef}>
                 <h2 className={styles.sectionTitle}>
                   Топ менеджеров <span className={styles.sectionHint}>за последние 7 дней</span>
                 </h2>
