@@ -328,7 +328,7 @@ export default function AnalyticsPage() {
           <div className={styles.grid}>
             <div className={`${styles.section} ${styles.sectionAccentPink}`} ref={qualityRef}>
               <h2 className={styles.sectionTitle}>Топ ошибок</h2>
-              <TopErrorsTab dateFrom={dateFrom || undefined} dateTo={dateTo || undefined} projectId={projectId ? Number(projectId) : undefined} userId={managerId ? Number(managerId) : undefined} />
+              <TopErrorsTab dateFrom={dateFrom || undefined} dateTo={dateTo || undefined} projectId={projectId ? Number(projectId) : undefined} userId={managerId ? Number(managerId) : undefined} showAllButton={false} />
               <Link to="/analytics/errors?tab=top" className={styles.jumpToManagersBtn}>Перейти к топ ошибкам →</Link>
             </div>
 

@@ -71,8 +71,8 @@ function CallDrillDown({ calls }: { calls: TopErrorCallItem[] | 'loading' | 'err
 
 // ── Tab 1: Топ ошибок ──────────────────────────────────────────────────────
 
-export function TopErrorsTab({ dateFrom, dateTo, projectId, userId, limit = 5 }: {
-  dateFrom?: string; dateTo?: string; projectId?: number; userId?: number; limit?: number
+export function TopErrorsTab({ dateFrom, dateTo, projectId, userId, limit = 5, showAllButton = true }: {
+  dateFrom?: string; dateTo?: string; projectId?: number; userId?: number; limit?: number; showAllButton?: boolean
 }) {
   const [errors, setErrors] = useState<TopErrorItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -197,7 +197,7 @@ export function TopErrorsTab({ dateFrom, dateTo, projectId, userId, limit = 5 }:
           </div>
         )
       })}
-      {!errorsExpanded && errors.length === limit && (
+      {showAllButton && !errorsExpanded && errors.length === limit && (
         <button type="button" className={styles.showAllBtn} onClick={showAllErrors}>
           Показать все ошибки
         </button>
@@ -301,7 +301,7 @@ export function ManagerErrorsTab({ dateFrom, dateTo, projectId, compact = false,
               <div>
                 <div className={styles.managerCardName}>{summary.name}</div>
                 <div className={styles.managerCardMeta}>
-                  Диалогов: {summary.call_count} · Всего ошибок: {summary.total_errors}
+                  Диалогов: {summary.call_count} · Всего ошибок: {summary.total_errors}{compact ? ' · топ-5' : ''}
                 </div>
               </div>
             </div>
@@ -329,7 +329,7 @@ export function ManagerErrorsTab({ dateFrom, dateTo, projectId, compact = false,
                 })}
               </div>
             )}
-            {!errorsExpanded && summary.top_errors.length === 5 && (
+            {!compact && !errorsExpanded && summary.top_errors.length === 5 && (
               <button type="button" className={styles.showAllBtn} onClick={showAllErrors}>
                 Показать все ошибки
               </button>
