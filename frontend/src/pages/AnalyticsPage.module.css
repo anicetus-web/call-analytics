@@ -203,6 +203,8 @@
 
 .sectionAccentPink { border-top: 2px solid var(--accent-pink); }
 .sectionAccentBlue { border-top: 2px solid var(--accent-blue); }
+.sectionAccentBlue:hover { border-color: rgba(99,102,241,0.5); border-top-color: var(--accent-blue); }
+.sectionAccentPink:hover { border-top-color: var(--accent-pink); }
 
 .sectionTitle {
   font-size: 13px;
