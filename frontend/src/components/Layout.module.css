@@ -3,6 +3,25 @@
   min-height: 100vh;
 }
 
+.mobileTopbar {
+  display: none;
+}
+
+.sidebarHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.closeBtn {
+  display: none;
+  color: var(--text-muted);
+}
+
+.backdrop {
+  display: none;
+}
+
 .sidebar {
   width: 240px;
   background: var(--bg-elevated);
@@ -13,6 +32,75 @@
   padding: 22px 16px;
   gap: 8px;
   flex-shrink: 0;
+}
+
+@media (max-width: 860px) {
+  .root { flex-direction: column; }
+
+  .mobileTopbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+  .mobileTopbar .logo { margin-bottom: 0; font-size: 15px; }
+
+  .menuBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+  }
+  .menuBtn:hover { background: var(--bg-hover); }
+
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 40;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(280px, 82vw);
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.22s var(--ease-out);
+    box-shadow: 8px 0 24px rgba(0,0,0,0.4);
+  }
+  .sidebarOpen { transform: translateX(0); }
+
+  .sidebarHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .sidebarHead .logo { margin-bottom: 0; }
+
+  .closeBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+  }
+  .closeBtn:hover { background: var(--bg-hover); color: var(--text); }
 }
 
 .logo {
@@ -133,6 +221,12 @@
   flex: 1;
   padding: 32px 36px;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+}
+
+@media (max-width: 860px) {
+  .main { padding: 18px 14px; }
 }
 
 .page {

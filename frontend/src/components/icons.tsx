@@ -148,3 +148,19 @@ export function IconChart({ size, className }: IconProps) {
     </svg>
   )
 }
+
+export function IconMenu({ size, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className} strokeWidth={2.2}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  )
+}
+
+export function IconClose({ size, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className} strokeWidth={2.2}>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  )
+}

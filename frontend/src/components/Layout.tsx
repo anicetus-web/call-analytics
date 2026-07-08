@@ -1,7 +1,7 @@
 import { useEffect, useState, FormEvent } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { logout, getMe, updateMe, CurrentUser } from '../api'
-import { LogoMark, IconFolder, IconUsers, IconPhoneWave, IconChart, IconLogout } from './icons'
+import { LogoMark, IconFolder, IconUsers, IconPhoneWave, IconChart, IconLogout, IconMenu, IconClose } from './icons'
 import Avatar from './Avatar'
 import Modal from './Modal'
 import styles from './Layout.module.css'
@@ -10,18 +10,40 @@ import formStyles from './Form.module.css'
 export default function Layout() {
   const [me, setMe] = useState<CurrentUser | null>(null)
   const [editingProfile, setEditingProfile] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
   const location = useLocation()
 
   useEffect(() => {
     getMe().then(setMe).catch(() => {})
   }, [])
 
+  // Close the mobile drawer automatically on every navigation, otherwise
+  // it stays open and blocks the page after tapping a link.
+  useEffect(() => { setNavOpen(false) }, [location.pathname])
+
   return (
     <div className={styles.root}>
-      <aside className={styles.sidebar}>
+      <div className={styles.mobileTopbar}>
+        <button className={styles.menuBtn} onClick={() => setNavOpen(true)} aria-label="Открыть меню">
+          <IconMenu size={22} />
+        </button>
         <div className={styles.logo}>
-          <span className={styles.logoIcon}><LogoMark size={20} /></span>
+          <span className={styles.logoIcon}><LogoMark size={18} /></span>
           Call Analytics
+        </div>
+      </div>
+
+      {navOpen && <div className={styles.backdrop} onClick={() => setNavOpen(false)} />}
+
+      <aside className={`${styles.sidebar} ${navOpen ? styles.sidebarOpen : ''}`}>
+        <div className={styles.sidebarHead}>
+          <div className={styles.logo}>
+            <span className={styles.logoIcon}><LogoMark size={20} /></span>
+            Call Analytics
+          </div>
+          <button className={styles.closeBtn} onClick={() => setNavOpen(false)} aria-label="Закрыть меню">
+            <IconClose size={20} />
+          </button>
         </div>
         <nav className={styles.nav}>
           <NavLink to="/projects" className={({ isActive }) => isActive ? styles.active : ''}>
