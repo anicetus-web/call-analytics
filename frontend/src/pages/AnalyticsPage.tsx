@@ -135,7 +135,15 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     Promise.all([getProjects(true), getManagers()])
-      .then(([p, m]) => { setProjects(p); setManagers(m) })
+      .then(([p, m]) => {
+        setProjects(p)
+        setManagers(m)
+        // Analytics is scoped per project (criteria/metric groups differ between
+        // projects, so a blended "all projects" view doesn't mean much) — default
+        // to the first project instead of an all-projects option. Future projects
+        // just show up as additional options here automatically.
+        setProjectId(prev => prev || (p[0] ? String(p[0].id) : ''))
+      })
       .catch(() => {})
   }, [])
 
@@ -242,7 +250,6 @@ export default function AnalyticsPage() {
 
       <div className={styles.filters}>
         <select className={styles.filterSelect} value={projectId} onChange={e => handleProjectChange(e.target.value)}>
-          <option value="">Все проекты</option>
           {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <select className={styles.filterSelect} value={managerId} onChange={e => setManagerId(e.target.value)}>
