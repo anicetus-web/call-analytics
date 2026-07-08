@@ -227,7 +227,7 @@
   padding-top: 12px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--accent-blue);
+  color: var(--accent-pink);
   transition: opacity 0.15s;
 }
 .jumpToManagersBtn:hover { opacity: 0.75; }
