@@ -968,10 +968,11 @@ async def manager_error_summary(
     project_id: int | None = Query(default=None),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
+    limit: int = Query(default=5, ge=1, le=100),
 ) -> ManagerErrorSummaryOut:
     """Card data for the "Ошибки менеджеров" tab: how many calls this manager
-    had, how many total scoring failures across all of them, and their top-5
-    most frequent failures."""
+    had, how many total scoring failures across all of them, and their most
+    frequent failures (top-N, N controlled by the frontend's "show all")."""
     await _assert_user_exists(db, user_id)
     user_row = (await db.execute(select(User.name).where(User.id == user_id))).scalar_one()
 
@@ -991,7 +992,7 @@ async def manager_error_summary(
     total_errors = (await db.execute(errors_q)).scalar() or 0
 
     top_errors = await _fetch_top_errors(
-        db, project_id=project_id, date_from=date_from, date_to=date_to, limit=5, user_id=user_id,
+        db, project_id=project_id, date_from=date_from, date_to=date_to, limit=limit, user_id=user_id,
     )
 
     return ManagerErrorSummaryOut(

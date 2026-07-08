@@ -200,6 +200,7 @@ export function ManagerErrorsTab({ dateFrom, dateTo, projectId, compact = false 
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [summary, setSummary] = useState<ManagerErrorSummary | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
+  const [errorsExpanded, setErrorsExpanded] = useState(false)
   const [expandedErr, setExpandedErr] = useState<number | null>(null)
   const [callsByError, setCallsByError] = useState<Record<number, TopErrorCallItem[] | 'loading' | 'error'>>({})
   const requestIdRef = useRef(0)
@@ -217,10 +218,20 @@ export function ManagerErrorsTab({ dateFrom, dateTo, projectId, compact = false 
     const requestId = ++requestIdRef.current
     setExpandedErr(null)
     setCallsByError({})
-    getManagerErrorSummary(selectedId, { dateFrom, dateTo, projectId })
+    setErrorsExpanded(false)
+    getManagerErrorSummary(selectedId, { dateFrom, dateTo, projectId }, 5)
       .then(data => { if (requestId === requestIdRef.current) setSummary(data) })
       .finally(() => { if (requestId === requestIdRef.current) setSummaryLoading(false) })
   }, [selectedId, dateFrom, dateTo, projectId])
+
+  function showAllErrors() {
+    if (selectedId === null) return
+    setErrorsExpanded(true)
+    setSummaryLoading(true)
+    getManagerErrorSummary(selectedId, { dateFrom, dateTo, projectId }, 100)
+      .then(setSummary)
+      .finally(() => setSummaryLoading(false))
+  }
 
   function toggleErr(metricItemId: number) {
     const next = expandedErr === metricItemId ? null : metricItemId
@@ -301,6 +312,11 @@ export function ManagerErrorsTab({ dateFrom, dateTo, projectId, compact = false 
                   )
                 })}
               </div>
+            )}
+            {!errorsExpanded && summary.top_errors.length === 5 && (
+              <button type="button" className={styles.showAllBtn} onClick={showAllErrors}>
+                Показать все ошибки
+              </button>
             )}
           </>
         )}

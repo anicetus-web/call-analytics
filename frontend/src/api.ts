@@ -417,9 +417,9 @@ export interface ManagerErrorSummary {
   top_errors: TopErrorItem[]
 }
 
-export const getManagerErrorSummary = (userId: number, params: GlobalAnalyticsParams = {}) =>
+export const getManagerErrorSummary = (userId: number, params: GlobalAnalyticsParams = {}, limit = 5) =>
   api.get<ManagerErrorSummary>(`/analytics/managers/${userId}/error-summary`, {
-    params: { project_id: params.projectId, date_from: params.dateFrom, date_to: params.dateTo },
+    params: { project_id: params.projectId, date_from: params.dateFrom, date_to: params.dateTo, limit },
   }).then(r => r.data)
 
 export const getQualityDistribution = (params: GlobalAnalyticsParams = {}) =>
