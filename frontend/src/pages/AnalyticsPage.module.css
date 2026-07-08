@@ -201,12 +201,36 @@
   border-color: rgba(236,72,153,0.4);
 }
 
+.sectionAccentPink { border-top: 2px solid var(--accent-pink); }
+.sectionAccentBlue { border-top: 2px solid var(--accent-blue); }
+
 .sectionTitle {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
   margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
+
+.sectionTitleIcon {
+  display: inline-flex;
+  color: var(--accent-pink);
+}
+.sectionAccentBlue .sectionTitleIcon { color: var(--accent-blue); }
+
+.jumpToManagersBtn {
+  display: block;
+  text-align: center;
+  margin-top: auto;
+  padding-top: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  transition: opacity 0.15s;
+}
+.jumpToManagersBtn:hover { opacity: 0.75; }
 
 .sectionHeadRow {
   display: flex;

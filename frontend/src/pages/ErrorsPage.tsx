@@ -1,10 +1,11 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   getTopErrors, getTopErrorManagers, getTopErrorCalls, getManagers, getManagerErrorSummary,
   TopErrorItem, ErrorManagerItem, TopErrorCallItem, Manager, ManagerErrorSummary,
 } from '../api'
 import Avatar from '../components/Avatar'
+import { IconSearch } from '../components/icons'
 import styles from './ErrorsPage.module.css'
 
 type Period = 'today' | 'yesterday' | '7d' | '30d' | 'custom'
@@ -144,13 +145,16 @@ export function TopErrorsTab({ dateFrom, dateTo, projectId, userId, limit = 5 }:
                 </div>
                 <div className={styles.detailManagers}>
                   <span className={styles.detailLabel}>Кто чаще всего допускает эту ошибку</span>
-                  <input
-                    type="text"
-                    className={styles.searchInput}
-                    placeholder="Поиск менеджера…"
-                    value={search}
-                    onChange={ev => setSearch(ev.target.value)}
-                  />
+                  <div className={styles.searchWrap}>
+                    <IconSearch size={14} className={styles.searchIcon} />
+                    <input
+                      type="text"
+                      className={styles.searchInput}
+                      placeholder="Поиск менеджера…"
+                      value={search}
+                      onChange={ev => setSearch(ev.target.value)}
+                    />
+                  </div>
                   {managers === 'loading' || managers === undefined ? (
                     <div className={styles.emptySmall}>Загрузка…</div>
                   ) : managers === 'error' ? (
@@ -232,20 +236,23 @@ export function ManagerErrorsTab({ dateFrom, dateTo, projectId, compact = false 
   return (
     <div className={compact ? styles.managersTabStack : styles.managersTabGrid}>
       <div className={styles.managerPicker}>
-        <input
-          type="text"
-          className={styles.searchInput}
-          placeholder="🔍 Поиск менеджера…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+        <div className={styles.searchWrap}>
+          <IconSearch size={14} className={styles.searchIcon} />
+          <input
+            type="text"
+            className={styles.searchInput}
+            placeholder="Поиск менеджера…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
         <div className={compact ? styles.managerPickerListCompact : styles.managerPickerList}>
           {filtered.map(m => (
             <button
               key={m.id}
               type="button"
               className={`${styles.managerPickerRow} ${selectedId === m.id ? styles.managerPickerRowActive : ''}`}
-              onClick={() => setSelectedId(m.id)}
+              onClick={() => setSelectedId(prev => prev === m.id ? null : m.id)}
             >
               <Avatar name={m.name} size={26} />
               <span>{m.name}</span>
@@ -313,7 +320,9 @@ const PERIODS: { key: Period; label: string }[] = [
 ]
 
 export default function ErrorsPage() {
-  const [tab, setTab] = useState<'top' | 'managers'>('top')
+  const [searchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab') === 'managers' ? 'managers' : 'top'
+  const [tab, setTab] = useState<'top' | 'managers'>(initialTab)
   const [period, setPeriod] = useState<Period>('7d')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
