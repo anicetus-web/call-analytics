@@ -216,6 +216,12 @@
   gap: 7px;
 }
 
+.sectionTitleIcon {
+  display: inline-flex;
+  color: var(--accent-pink);
+}
+.sectionAccentBlue .sectionTitleIcon { color: var(--accent-blue); }
+
 .jumpToManagersBtn, .jumpToManagersBtnBlue {
   display: block;
   text-align: center;
@@ -797,6 +803,50 @@
   text-transform: uppercase;
   letter-spacing: 0.03em;
   margin-bottom: 8px;
+}
+
+.keywordList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.keywordRow {
+  display: grid;
+  grid-template-columns: 84px 1fr 24px;
+  align-items: center;
+  gap: 8px;
+}
+
+.keywordWord {
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.keywordBarTrack {
+  height: 6px;
+  background: var(--bg-hover);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.keywordBarFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-pink));
+  border-radius: 3px;
+}
+
+.keywordCount {
+  color: var(--text-faint);
+  font-size: 11px;
+  text-align: right;
+}
+
+.durationChartWrap {
+  margin-top: 36px;
 }
 
 @media (max-width: 1300px) {
