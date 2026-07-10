@@ -145,6 +145,7 @@ export default function ManagerDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   const requestIdRef = useRef(0)
+  const qualRequestIdRef = useRef(0)
   const windowDays = PERIODS.find(p => p.key === period)!.days
   // windowDays - 1: "День" (1) must resolve to today only, not today+yesterday —
   // matches the activityStrip loop below, which also starts at isoDaysAgo(windowDays - 1).
@@ -202,13 +203,14 @@ export default function ManagerDetailPage() {
   useEffect(() => {
     setQualLoading(true)
     setQualExpanded(false)
+    const requestId = ++qualRequestIdRef.current
     const projectId = tab === 'all' ? undefined : tab
     const qualDays: Record<Exclude<QualPeriodKey, 'all'>, number> = { day: 1, week: 7, month: 30 }
     const dateFrom = qualPeriod === 'all' ? undefined : isoDaysAgo(qualDays[qualPeriod] - 1)
     getManagerQualitative(userId, { projectId, dateFrom })
-      .then(setQualitative)
-      .catch(() => setQualitative([]))
-      .finally(() => setQualLoading(false))
+      .then(data => { if (requestId === qualRequestIdRef.current) setQualitative(data) })
+      .catch(() => { if (requestId === qualRequestIdRef.current) setQualitative([]) })
+      .finally(() => { if (requestId === qualRequestIdRef.current) setQualLoading(false) })
   }, [userId, tab, qualPeriod])
 
   const activeDatesSet = useMemo(() => new Set(timeline.map(t => t.date)), [timeline])
@@ -443,7 +445,7 @@ export default function ManagerDetailPage() {
                 <h2 className={styles.sectionTitle}>Топ ошибок</h2>
                 <p className={styles.sectionSubtitle}>Что этому менеджеру стоит улучшить в первую очередь</p>
               </div>
-              <TopErrorsTab dateFrom={dateFrom} projectId={tab as number} userId={userId} limit={5} />
+              <TopErrorsTab dateFrom={dateFrom} projectId={tab as number} userId={userId} limit={5} showAllButton={false} />
               <Link
                 to={`/analytics/errors?tab=managers&manager_id=${userId}&period=${PERIOD_TO_ERRORS[period]}`}
                 className={styles.showAllLink}

@@ -100,9 +100,10 @@ export function TopErrorsTab({ dateFrom, dateTo, projectId, userId, limit = 5, s
   function showAllErrors() {
     setErrorsExpanded(true)
     setLoading(true)
+    const requestId = ++requestIdRef.current
     getTopErrors({ dateFrom, dateTo, projectId, userId }, 100)
-      .then(setErrors)
-      .finally(() => setLoading(false))
+      .then(data => { if (requestId === requestIdRef.current) setErrors(data) })
+      .finally(() => { if (requestId === requestIdRef.current) setLoading(false) })
   }
 
   function toggle(e: TopErrorItem) {
@@ -244,9 +245,10 @@ export function ManagerErrorsTab({ dateFrom, dateTo, projectId, compact = false,
     if (selectedId === null) return
     setErrorsExpanded(true)
     setSummaryLoading(true)
+    const requestId = ++requestIdRef.current
     getManagerErrorSummary(selectedId, { dateFrom, dateTo, projectId }, 100)
-      .then(setSummary)
-      .finally(() => setSummaryLoading(false))
+      .then(data => { if (requestId === requestIdRef.current) setSummary(data) })
+      .finally(() => { if (requestId === requestIdRef.current) setSummaryLoading(false) })
   }
 
   function toggleErr(metricItemId: number) {
