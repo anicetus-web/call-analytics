@@ -138,16 +138,17 @@ export default function CallsPage() {
       </div>
 
       <div className={styles.filters}>
-        <select className={styles.filterSelect} value={projectId} onChange={e => handleProjectChange(e.target.value)}>
+        <select className={styles.filterSelect} aria-label="Проект" value={projectId} onChange={e => handleProjectChange(e.target.value)}>
           <option value="">Все проекты</option>
           {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
-        <select className={styles.filterSelect} value={userId} onChange={e => setUserId(e.target.value)}>
+        <select className={styles.filterSelect} aria-label="Менеджер" value={userId} onChange={e => setUserId(e.target.value)}>
           <option value="">Все менеджеры</option>
           {managerOptions.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
         <select
           className={styles.filterSelect}
+          aria-label="Статус"
           value={status}
           onChange={e => { setStatus(e.target.value); setOnlyErrors(false) }}
           disabled={onlyErrors}
@@ -160,6 +161,7 @@ export default function CallsPage() {
         <input
           type="date"
           className={styles.filterDate}
+          aria-label="Дата от"
           value={dateFrom}
           onChange={e => setDateFrom(e.target.value)}
         />
@@ -167,6 +169,7 @@ export default function CallsPage() {
         <input
           type="date"
           className={styles.filterDate}
+          aria-label="Дата до"
           value={dateTo}
           onChange={e => setDateTo(e.target.value)}
         />

@@ -249,16 +249,16 @@ export default function AnalyticsPage() {
       </div>
 
       <div className={styles.filters}>
-        <select className={styles.filterSelect} value={projectId} onChange={e => handleProjectChange(e.target.value)}>
+        <select className={styles.filterSelect} aria-label="Проект" value={projectId} onChange={e => handleProjectChange(e.target.value)}>
           {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
-        <select className={styles.filterSelect} value={managerId} onChange={e => setManagerId(e.target.value)}>
+        <select className={styles.filterSelect} aria-label="Менеджер" value={managerId} onChange={e => setManagerId(e.target.value)}>
           <option value="">Все менеджеры</option>
           {managerOptions.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
-        <input type="date" className={styles.filterDate} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+        <input type="date" className={styles.filterDate} aria-label="Дата от" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
         <span className={styles.dash}>—</span>
-        <input type="date" className={styles.filterDate} value={dateTo} onChange={e => setDateTo(e.target.value)} />
+        <input type="date" className={styles.filterDate} aria-label="Дата до" value={dateTo} onChange={e => setDateTo(e.target.value)} />
         <span className={styles.filterNote}>Диапазон дат влияет на всё, кроме KPI и рейтинга менеджеров — те всегда за последние 7 дней</span>
       </div>
 

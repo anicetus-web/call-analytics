@@ -356,6 +356,7 @@ export default function ProjectDetailPage() {
               <div className={styles.timelineFilters}>
                 <select
                   className={formStyles.select}
+                  aria-label="Период"
                   value={timeRange}
                   onChange={e => setTimeRange(e.target.value as TimePreset)}
                 >
@@ -363,6 +364,7 @@ export default function ProjectDetailPage() {
                 </select>
                 <select
                   className={formStyles.select}
+                  aria-label="Менеджер"
                   value={timelineManagerId}
                   onChange={e => setTimelineManagerId(e.target.value)}
                 >

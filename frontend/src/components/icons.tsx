@@ -9,6 +9,10 @@ const base = (size = 20) => ({
   strokeWidth: 1.8,
   strokeLinecap: 'round' as const,
   strokeLinejoin: 'round' as const,
+  // These icons are always decorative — they accompany text labels or sit
+  // inside aria-labeled buttons — so hide them from assistive tech to avoid
+  // double announcements.
+  'aria-hidden': true,
 })
 
 // Logo mark: a simple audio waveform — four bars of varying height, symmetric

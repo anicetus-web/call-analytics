@@ -163,6 +163,7 @@ export function TopErrorsTab({ dateFrom, dateTo, projectId, userId, limit = 5, s
                       type="text"
                       className={styles.searchInput}
                       placeholder="Поиск менеджера…"
+                      aria-label="Поиск менеджера"
                       value={search}
                       onChange={ev => setSearch(ev.target.value)}
                     />
@@ -271,6 +272,7 @@ export function ManagerErrorsTab({ dateFrom, dateTo, projectId, compact = false,
             type="text"
             className={styles.searchInput}
             placeholder="Поиск менеджера…"
+            aria-label="Поиск менеджера"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -389,9 +391,9 @@ export default function ErrorsPage() {
         ))}
         {period === 'custom' && (
           <>
-            <input type="date" className={styles.filterDate} value={customFrom} onChange={e => setCustomFrom(e.target.value)} />
+            <input type="date" className={styles.filterDate} aria-label="Дата от" value={customFrom} onChange={e => setCustomFrom(e.target.value)} />
             <span className={styles.dash}>—</span>
-            <input type="date" className={styles.filterDate} value={customTo} onChange={e => setCustomTo(e.target.value)} />
+            <input type="date" className={styles.filterDate} aria-label="Дата до" value={customTo} onChange={e => setCustomTo(e.target.value)} />
           </>
         )}
       </div>
