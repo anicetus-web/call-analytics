@@ -1,5 +1,5 @@
 import { useEffect, useState, FormEvent } from 'react'
-import { Outlet, NavLink, useLocation } from 'react-router-dom'
+import { Outlet, Link, NavLink, useLocation } from 'react-router-dom'
 import { logout, getMe, updateMe, CurrentUser } from '../api'
 import { LogoMark, IconFolder, IconUsers, IconPhoneWave, IconChart, IconLogout, IconMenu, IconClose } from './icons'
 import Avatar from './Avatar'
@@ -27,20 +27,20 @@ export default function Layout() {
         <button className={styles.menuBtn} onClick={() => setNavOpen(true)} aria-label="Открыть меню">
           <IconMenu size={22} />
         </button>
-        <div className={styles.logo}>
+        <Link to="/projects" className={styles.logo}>
           <span className={styles.logoIcon}><LogoMark size={18} /></span>
           Call Analytics
-        </div>
+        </Link>
       </div>
 
       {navOpen && <div className={styles.backdrop} onClick={() => setNavOpen(false)} />}
 
       <aside className={`${styles.sidebar} ${navOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.sidebarHead}>
-          <div className={styles.logo}>
+          <Link to="/projects" className={styles.logo}>
             <span className={styles.logoIcon}><LogoMark size={20} /></span>
             Call Analytics
-          </div>
+          </Link>
           <button className={styles.closeBtn} onClick={() => setNavOpen(false)} aria-label="Закрыть меню">
             <IconClose size={20} />
           </button>
